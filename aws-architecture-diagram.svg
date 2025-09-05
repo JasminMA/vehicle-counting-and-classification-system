@@ -1,0 +1,200 @@
+<svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background -->
+    <rect width="1200" height="800" fill="#f8f9fa"/>
+
+    <!-- Title -->
+    <text x="600" y="30" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#232F3E">
+        Vehicle Counting and Classification System - AWS Architecture
+    </text>
+
+    <!-- User -->
+    <g transform="translate(50, 80)">
+        <circle cx="30" cy="30" r="25" fill="#4CAF50" stroke="#2E7D32" stroke-width="2"/>
+        <text x="30" y="35" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="white" font-weight="bold">USER</text>
+        <text x="30" y="70" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">Single User</text>
+    </g>
+
+    <!-- S3 Web UI -->
+    <g transform="translate(350, 80)">
+        <rect x="0" y="0" width="100" height="60" rx="5" fill="#3F7E3F" stroke="#2E5E2E" stroke-width="2"/>
+        <text x="50" y="25" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="white">S3 Static</text>
+        <text x="50" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="white">Website</text>
+        <text x="50" y="75" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">HTML/CSS/JS</text>
+    </g>
+
+    <!-- API Gateway -->
+    <g transform="translate(550, 80)">
+        <rect x="0" y="0" width="100" height="60" rx="5" fill="#FF4444" stroke="#CC3333" stroke-width="2"/>
+        <text x="50" y="25" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="white">API Gateway</text>
+        <text x="50" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="white">REST API</text>
+        <text x="50" y="75" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">/upload, /results</text>
+    </g>
+
+    <!-- Lambda Functions Row -->
+
+    <!-- Upload Handler Lambda -->
+    <g transform="translate(150, 200)">
+        <rect x="0" y="0" width="120" height="70" rx="5" fill="#FF9900" stroke="#E68900" stroke-width="2"/>
+        <text x="60" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white">Lambda</text>
+        <text x="60" y="35" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="white">Upload Handler</text>
+        <text x="60" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="white">Generate pre-signed URLs</text>
+        <text x="60" y="85" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">POST /upload</text>
+    </g>
+
+    <!-- Video Processor Lambda -->
+    <g transform="translate(320, 200)">
+        <rect x="0" y="0" width="120" height="70" rx="5" fill="#FF9900" stroke="#E68900" stroke-width="2"/>
+        <text x="60" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white">Lambda</text>
+        <text x="60" y="35" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="white">Video Processor</text>
+        <text x="60" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="white">Start Rekognition</text>
+        <text x="60" y="85" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">S3 Event Trigger</text>
+    </g>
+
+    <!-- Results Processor Lambda -->
+    <g transform="translate(490, 200)">
+        <rect x="0" y="0" width="120" height="70" rx="5" fill="#FF9900" stroke="#E68900" stroke-width="2"/>
+        <text x="60" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white">Lambda</text>
+        <text x="60" y="35" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="white">Results Processor</text>
+        <text x="60" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="white">Process and Save</text>
+        <text x="60" y="85" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">SNS Trigger</text>
+    </g>
+
+    <!-- Results API Lambda -->
+    <g transform="translate(660, 200)">
+        <rect x="0" y="0" width="120" height="70" rx="5" fill="#FF9900" stroke="#E68900" stroke-width="2"/>
+        <text x="60" y="20" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white">Lambda</text>
+        <text x="60" y="35" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="white">Results API</text>
+        <text x="60" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="white">Return Results</text>
+        <text x="60" y="85" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">GET /results/{id}</text>
+    </g>
+
+    <!-- S3 Storage -->
+    <g transform="translate(200, 350)">
+        <rect x="0" y="0" width="200" height="80" rx="5" fill="#3F7E3F" stroke="#2E5E2E" stroke-width="2"/>
+        <text x="100" y="25" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="white">S3 Storage Bucket</text>
+        <text x="50" y="45" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="white">uploads/</text>
+        <text x="100" y="55" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="white">processing/</text>
+        <text x="150" y="45" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="white">results/</text>
+        <text x="150" y="65" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="white">errors/</text>
+        <text x="100" y="95" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">File-based Job Tracking</text>
+    </g>
+
+    <!-- Rekognition -->
+    <g transform="translate(500, 350)">
+        <rect x="0" y="0" width="120" height="80" rx="5" fill="#9C27B0" stroke="#7B1FA2" stroke-width="2"/>
+        <text x="60" y="25" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="white">Amazon</text>
+        <text x="60" y="40" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="white">Rekognition</text>
+        <text x="60" y="55" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="white">Video Analysis</text>
+        <text x="60" y="95" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">Vehicle Detection</text>
+    </g>
+
+    <!-- SNS -->
+    <g transform="translate(700, 350)">
+        <rect x="0" y="0" width="100" height="80" rx="5" fill="#FF6B35" stroke="#E55A2B" stroke-width="2"/>
+        <text x="50" y="25" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="white">Amazon SNS</text>
+        <text x="50" y="45" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="white">Notifications</text>
+        <text x="50" y="95" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">Job Completion</text>
+    </g>
+
+    <!-- CloudWatch -->
+    <g transform="translate(900, 350)">
+        <rect x="0" y="0" width="100" height="80" rx="5" fill="#2196F3" stroke="#1976D2" stroke-width="2"/>
+        <text x="50" y="25" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="white">CloudWatch</text>
+        <text x="50" y="45" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="white">Monitoring</text>
+        <text x="50" y="95" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#333">Logs and Metrics</text>
+    </g>
+
+    <!-- Data Flow Arrows -->
+
+    <!-- User to ui -->
+    <path d="M 110 110 L 350 110" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+
+    <!-- Web UI to API Gateway -->
+    <path d="M 450 110 L 540 110" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+    <text x="495" y="105" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">API Calls</text>
+
+    <!-- API Gateway to Upload Lambda -->
+    <path d="M 580 140 L 230 190" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+    <text x="400" y="160" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">POST /upload</text>
+
+    <!-- API Gateway to Results Lambda -->
+    <path d="M 620 140 L 700 190" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+    <text x="660" y="160" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">GET /results</text>
+
+    <!-- Upload Lambda to S3 (pre-signed URL) -->
+    <path d="M 210 270 L 280 350" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+    <text x="230" y="315" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">Pre-signed URL</text>
+
+    <!-- Direct upload to S3 -->
+    <path d="M 400 140 Q 150 250 250 350" stroke="#4CAF50" stroke-width="3" fill="none" marker-end="url(#arrowhead)" stroke-dasharray="5,5"/>
+    <text x="250" y="240" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#4CAF50" font-weight="bold">Direct Upload</text>
+
+    <!-- S3 to Video Processor -->
+    <path d="M 320 350 L 380 270" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+    <text x="350" y="315" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">S3 Event</text>
+
+    <!-- Video Processor to Rekognition -->
+    <path d="M 440 235 L 500 380" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+    <text x="470" y="300" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">Start Job</text>
+
+    <!-- Rekognition to SNS -->
+    <path d="M 620 390 L 690 390" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+    <text x="655" y="385" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">Complete</text>
+
+    <!-- SNS to Results Processor -->
+    <path d="M 720 350 L 570 270" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+    <text x="645" y="305" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">Notification</text>
+
+    <!-- Results Processor to S3 -->
+    <path d="M 550 270 L 380 350" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+    <text x="465" y="305" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">Save Results</text>
+
+    <!-- Results API to S3 -->
+    <path d="M 720 270 L 400 350" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+    <text x="560" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#333">Read Results</text>
+
+    <!-- Polling arrow (Results API back to Web UI) -->
+    <path d="M 720 190 Q 850 150 450 140" stroke="#2196F3" stroke-width="2" fill="none" marker-end="url(#arrowhead)" stroke-dasharray="3,3"/>
+    <text x="650" y="130" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#2196F3">Poll every 10s</text>
+
+    <!-- Arrow marker definition -->
+    <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
+        </marker>
+    </defs>
+
+    <!-- Flow Steps -->
+    <g transform="translate(50, 500)">
+        <text x="0" y="20" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#232F3E">Data Flow Steps:</text>
+        <text x="0" y="45" font-family="Arial, sans-serif" font-size="12" fill="#333">1. User uploads video via Web UI</text>
+        <text x="0" y="65" font-family="Arial, sans-serif" font-size="12" fill="#333">2. Upload Handler generates pre-signed S3 URL</text>
+        <text x="0" y="85" font-family="Arial, sans-serif" font-size="12" fill="#333">3. Direct upload to S3 triggers Video Processor</text>
+        <text x="0" y="105" font-family="Arial, sans-serif" font-size="12" fill="#333">4. Video Processor starts Rekognition analysis</text>
+        <text x="0" y="125" font-family="Arial, sans-serif" font-size="12" fill="#333">5. Rekognition completes → SNS notification</text>
+        <text x="0" y="145" font-family="Arial, sans-serif" font-size="12" fill="#333">6. Results Processor saves analysis to S3</text>
+        <text x="0" y="165" font-family="Arial, sans-serif" font-size="12" fill="#333">7. Web UI polls Results API → displays results</text>
+    </g>
+
+    <!-- Cost and Features -->
+    <g transform="translate(650, 500)">
+        <text x="0" y="20" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#232F3E">Key Features:</text>
+        <text x="0" y="45" font-family="Arial, sans-serif" font-size="12" fill="#333">• Single user optimized design</text>
+        <text x="0" y="65" font-family="Arial, sans-serif" font-size="12" fill="#333">• File-based job tracking (no database)</text>
+        <text x="0" y="85" font-family="Arial, sans-serif" font-size="12" fill="#333">• Direct S3 upload (cost efficient)</text>
+        <text x="0" y="105" font-family="Arial, sans-serif" font-size="12" fill="#333">• Real-time status polling</text>
+        <text x="0" y="125" font-family="Arial, sans-serif" font-size="12" fill="#333">• Auto-cleanup after 30 days</text>
+        <text x="0" y="145" font-family="Arial, sans-serif" font-size="12" fill="#333">• Estimated cost: $10-20/month</text>
+    </g>
+
+    <!-- Legend -->
+    <g transform="translate(950, 80)">
+        <text x="0" y="15" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#232F3E">Legend:</text>
+        <line x1="0" y1="25" x2="30" y2="25" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+        <text x="35" y="30" font-family="Arial, sans-serif" font-size="10" fill="#333">Regular flow</text>
+        <line x1="0" y1="40" x2="30" y2="40" stroke="#4CAF50" stroke-width="3" stroke-dasharray="5,5" marker-end="url(#arrowhead)"/>
+        <text x="35" y="45" font-family="Arial, sans-serif" font-size="10" fill="#333">Direct upload</text>
+        <line x1="0" y1="55" x2="30" y2="55" stroke="#2196F3" stroke-width="2" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+        <text x="35" y="60" font-family="Arial, sans-serif" font-size="10" fill="#333">Polling</text>
+    </g>
+</svg>

@@ -8,7 +8,7 @@ A simplified AWS-based system for counting and classifying vehicles in uploaded 
 ### Simplified Architecture for Single User
 
 ```
-[User] → [Simple Web UI] → [API Gateway] → [Lambda] → [S3 Bucket] → [Rekognition Video]
+[User] → [S3 Static Website] → [API Gateway] → [Lambda] → [S3 Bucket] → [Rekognition Video]
            ↓                    ↓                              ↓
 [Results View] ← [Lambda API] ← [Lambda Processor] ← [Rekognition Results]
 ```
@@ -29,15 +29,16 @@ A simplified AWS-based system for counting and classifying vehicles in uploaded 
 - Provides confidence scores and bounding boxes
 - No custom training required
 
-#### 3. **Simple Web UI (S3 Static Website + CloudFront)**
+#### 3. **Simple Web UI (S3 Static Website)**
 - **Static Website Hosting**: Single-page application (HTML/CSS/JavaScript)
-- **CloudFront Distribution**: CDN for fast loading and HTTPS
+- **Direct HTTP Access**: No CDN needed for single user
 - **Features**:
   - Drag & drop video upload interface
   - Upload progress tracking
   - Real-time job status monitoring
   - Results viewing and download
   - Simple, clean interface optimized for single user
+- **Access URL**: `http://bucket-name.s3-website-region.amazonaws.com`
 
 #### 4. **API Layer (API Gateway + Lambda)**
 - **Upload API** (`/upload`): Generates pre-signed S3 URLs for secure upload
@@ -177,21 +178,20 @@ timestamp,vehicle_type,confidence,tracking_id,x,y,width,height
 
 ### Single User Optimizations
 - **Simple Static Website**: No complex frontend framework needed
+- **Direct S3 Access**: No CDN overhead for single user
 - **File-based Job Tracking**: No database needed, use S3 file structure
 - **Pre-signed URLs**: Direct S3 upload reduces Lambda costs
 - **Auto-cleanup**: Videos and old job files deleted after 30 days
 - **Basic monitoring**: Essential CloudWatch only
-- **Single CloudFront**: One distribution for the entire UI
 - **Minimal API**: Only upload and results endpoints
 
 ### Estimated Monthly Costs (Light Usage)
 - **S3 Storage**: $2-5 (with lifecycle policies)
-- **CloudFront**: $1-2 (minimal data transfer)
 - **API Gateway**: $1-2 (only 2 endpoints, low request volume)
 - **Lambda Execution**: $3-10 (depending on video length/frequency)
 - **Rekognition Video**: $0.10 per minute of video processed
 - **SNS Notifications**: <$1
-- **Total**: ~$10-20/month for moderate usage (10-20 videos)
+- **Total**: ~$8-18/month for moderate usage (10-20 videos)
 
 ## Security & Access
 
@@ -222,7 +222,7 @@ timestamp,vehicle_type,confidence,tracking_id,x,y,width,height
 ## Usage Workflow
 
 ### For the Single User:
-1. **Access Web UI**: Open the CloudFront URL in browser
+1. **Access Web UI**: Open the S3 website URL in browser
 2. **Upload Video**: Drag & drop video file to upload area
 3. **Monitor Progress**: Watch real-time status updates on the page
 4. **View Results**: Browse analysis results directly in the web interface
@@ -357,30 +357,33 @@ function pollJobResults(jobId) {
 
 ### Deployment Strategy
 
-#### S3 Bucket Structure
-```
-vehicle-analysis-bucket-[account-id]/
-├── uploads/{job-id}/
-│   └── {filename}.mp4
-├── processing/{job-id}.processing
-├── results/{job-id}/
-│   ├── analysis.json
-│   ├── summary.json
-│   └── timeline.csv
-└── errors/{job-id}/
-    └── error.json
-```
-
-#### CloudFront + S3 Website
+#### S3 Static Website Hosting
 ```bash
-# UI bucket configuration
+# Create and configure S3 bucket for static website
 aws s3 mb s3://vehicle-analysis-ui-[account-id]
 aws s3 website s3://vehicle-analysis-ui-[account-id] --index-document index.html
+
+# Set bucket policy for public read access
+aws s3api put-bucket-policy --bucket vehicle-analysis-ui-[account-id] --policy file://bucket-policy.json
 ```
-- **Origin**: S3 static website endpoint
-- **Caching**: Optimized for static content
-- **SSL Certificate**: AWS managed certificate
-- **Custom Domain**: Optional (e.g., vehicle-analysis.your-domain.com)
+
+**Bucket Policy (bucket-policy.json):**
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PublicReadGetObject",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::vehicle-analysis-ui-[account-id]/*"
+    }
+  ]
+}
+```
+
+**Access URL**: `http://vehicle-analysis-ui-[account-id].s3-website-[region].amazonaws.com`
 
 ### Security Considerations
 
@@ -389,7 +392,7 @@ aws s3 website s3://vehicle-analysis-ui-[account-id] --index-document index.html
 {
   "CORSRules": [
     {
-      "AllowedOrigins": ["https://your-cloudfront-domain.cloudfront.net"],
+      "AllowedOrigins": ["http://bucket-name.s3-website-region.amazonaws.com"],
       "AllowedMethods": ["GET", "POST", "PUT"],
       "AllowedHeaders": ["*"],
       "MaxAgeSeconds": 3000
@@ -403,7 +406,7 @@ aws s3 website s3://vehicle-analysis-ui-[account-id] --index-document index.html
 Cors:
   AllowMethods: "'GET,POST,OPTIONS'"
   AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-  AllowOrigin: "'https://your-cloudfront-domain.cloudfront.net'"
+  AllowOrigin: "'http://bucket-name.s3-website-region.amazonaws.com'"
 ```
 
 ### User Experience Features
@@ -430,32 +433,47 @@ Cors:
 cd web-ui/
 python -m http.server 8000  # Simple local server for testing
 
-# Deployment
+# Deployment to S3
 aws s3 sync ./web-ui/ s3://vehicle-analysis-ui-[account-id]/
-aws cloudfront create-invalidation --distribution-id XXXXX --paths "/*"
+
+# Update bucket policy if needed
+aws s3api put-bucket-policy --bucket vehicle-analysis-ui-[account-id] --policy file://bucket-policy.json
 ```
 
-## Future Enhancements (Optional)
+### Future Enhancements (Optional)
 
 ### Phase 2 Features (if needed later):
+- **HTTPS Support**: Add CloudFront distribution for SSL/TLS
+- **Custom Domain**: Route 53 + CloudFront for branded URL
 - Video preview with detection overlays
 - Historical analysis trends and charts
 - Email reports with visual summaries
 - Batch processing of multiple videos
 - Support for live video streams
 
+### Adding HTTPS Later (Optional)
+If you later need HTTPS or custom domain:
+```bash
+# Create CloudFront distribution
+aws cloudfront create-distribution --distribution-config file://cloudfront-config.json
+
+# Point custom domain via Route 53
+aws route53 create-hosted-zone --name your-domain.com
+```
+
 ## Prerequisites
 
 ### AWS Account Setup:
 - Active AWS account with appropriate permissions
 - AWS CLI configured (for deployment)
-- Route 53 hosted zone (optional, for custom domain)
+- Basic understanding of S3 bucket policies
 
 ### Technical Requirements:
 - Supported video formats: MP4, MOV, AVI
 - Maximum video length: 30 minutes (cost consideration)
 - Maximum file size: 8GB (Lambda limitation)
 - Modern web browser (Chrome, Firefox, Safari, Edge)
+- **Note**: HTTP only (no HTTPS) - suitable for single user
 
 ### Development Requirements:
 - Basic HTML/CSS/JavaScript knowledge (for UI customization)
