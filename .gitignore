@@ -2,7 +2,6 @@
 # Node.js / TypeScript (CDK)
 # ---------------------
 infrastructure/node_modules/
-infrastructure/package-lock.json
 *.tsbuildinfo
 
 # CDK context & outputs
