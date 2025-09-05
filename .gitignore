@@ -4,6 +4,11 @@
 infrastructure/node_modules/
 *.tsbuildinfo
 
+# TypeScript compiled output
+infrastructure/**/*.js
+infrastructure/**/*.d.ts
+infrastructure/**/*.js.map
+
 # CDK context & outputs
 cdk.out/
 cdk.context.json

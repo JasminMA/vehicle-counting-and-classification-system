@@ -10,7 +10,14 @@
     "test": "jest",
     "cdk": "cdk",
     "lint": "tsc --noEmit",
-    "clean": "rm -rf cdk.out && rm -rf node_modules && rm -f *.tsbuildinfo"
+    "clean": "rm -rf cdk.out && rm -rf node_modules && rm -f *.tsbuildinfo",
+    "synth": "cdk synth",
+    "synth:dev": "cdk synth -c environment=dev",
+    "synth:prod": "cdk synth -c environment=prod",
+    "deploy:dev": "cdk deploy --all -c environment=dev",
+    "deploy:prod": "cdk deploy --all -c environment=prod",
+    "diff:dev": "cdk diff -c environment=dev",
+    "diff:prod": "cdk diff -c environment=prod"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

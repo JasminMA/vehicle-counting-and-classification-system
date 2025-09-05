@@ -24,6 +24,17 @@ cd infrastructure && npm install
 cd .. && pip install -r requirements.txt
 ```
 
+### First-Time Setup
+```bash
+# Bootstrap CDK (required once per AWS account/region)
+./scripts/bootstrap-cdk.sh          # Linux/Mac
+.\scripts\bootstrap-cdk.ps1         # Windows PowerShell
+
+# Or manually:
+npm run bootstrap
+# Or: cdk bootstrap aws://YOUR-ACCOUNT-ID/YOUR-REGION
+```
+
 ### Development
 ```bash
 # Run all tests
@@ -56,7 +67,7 @@ npm run deploy:dev
 
 ## Development Status
 - [x] Project setup and CI/CD
-- [ ] Core infrastructure (S3, IAM)
+- [x] Core infrastructure (S3, IAM)
 - [ ] Lambda functions
 - [ ] API Gateway integration
 - [ ] Web UI
