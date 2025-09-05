@@ -1,17 +1,13 @@
-HELP.md
-target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+# ---------------------
+# Node.js / TypeScript (CDK)
+# ---------------------
+infrastructure/node_modules/
+infrastructure/package-lock.json
+*.tsbuildinfo
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
+# CDK context & outputs
+cdk.out/
+cdk.context.json
 
 ### IntelliJ IDEA ###
 .idea
@@ -19,20 +15,38 @@ target/
 *.iml
 *.ipr
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
+# ---------------------
+# Python (Lambdas)
+# ---------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+.eggs/
+.Python
+.venv/
+venv/
+env/
 build/
-!**/src/main/**/build/
-!**/src/test/**/build/
+dist/
 
-### VS Code ###
-.vscode/
-/logs/*
+# ---------------------
+# Web UI (Frontend)
+# ---------------------
+web-ui/node_modules/
+web-ui/dist/
+web-ui/build/
+web-ui/.cache/
 
-### Docker & Environment ###
-.env
-docker-compose.override.yml
+# ---------------------
+# Logs
+# ---------------------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---------------------
+# IDEs / Edito
