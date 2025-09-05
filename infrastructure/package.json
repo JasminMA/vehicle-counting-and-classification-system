@@ -8,7 +8,9 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "lint": "tsc --noEmit",
+    "clean": "rm -rf cdk.out && rm -rf node_modules && rm -f *.tsbuildinfo"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

@@ -1,17 +1,33 @@
-// import * as cdk from 'aws-cdk-lib';
-// import { Template } from 'aws-cdk-lib/assertions';
-// import * as Infrastructure from '../lib/infrastructure-stack';
+import * as cdk from 'aws-cdk-lib';
+import { Template } from 'aws-cdk-lib/assertions';
 
-// example test. To run these tests, uncomment this file along with the
-// example resource in lib/infrastructure-stack.ts
-test('SQS Queue Created', () => {
-//   const app = new cdk.App();
-//     // WHEN
-//   const stack = new Infrastructure.InfrastructureStack(app, 'MyTestStack');
-//     // THEN
-//   const template = Template.fromStack(stack);
+// Basic placeholder test for CI/CD pipeline
+// This ensures CDK tests run successfully before we build actual stacks
 
-//   template.hasResourceProperties('AWS::SQS::Queue', {
-//     VisibilityTimeout: 300
-//   });
+describe('Infrastructure Tests', () => {
+  test('CDK App can be created', () => {
+    const app = new cdk.App();
+    
+    // Basic test that CDK app creation works
+    expect(app).toBeDefined();
+  });
+
+  test('Basic Stack can be synthesized', () => {
+    const app = new cdk.App();
+    const stack = new cdk.Stack(app, 'TestStack');
+    
+    // Add a simple resource to test synthesis
+    new cdk.CfnOutput(stack, 'TestOutput', {
+      value: 'test-value',
+      description: 'Test output for CI/CD validation'
+    });
+
+    const template = Template.fromStack(stack);
+    
+    // Verify the output was created
+    template.hasOutput('TestOutput', {
+      Value: 'test-value',
+      Description: 'Test output for CI/CD validation'
+    });
+  });
 });

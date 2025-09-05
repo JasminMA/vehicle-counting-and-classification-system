@@ -31,6 +31,9 @@ venv/
 env/
 build/
 dist/
+.pytest_cache/
+.coverage
+htmlcov/
 
 # ---------------------
 # Web UI (Frontend)

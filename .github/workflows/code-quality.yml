@@ -1,0 +1,62 @@
+name: Code Quality
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install Python linting tools
+        run: |
+          pip install flake8 black isort
+      
+      - name: Install CDK dependencies
+        run: |
+          cd infrastructure
+          npm ci
+      
+      - name: Python code formatting check
+        run: |
+          black --check lambda/
+        continue-on-error: true
+      
+      - name: Python import sorting check
+        run: |
+          isort --check-only lambda/
+        continue-on-error: true
+      
+      - name: Python linting
+        run: |
+          flake8 lambda/ --count --statistics
+        continue-on-error: true
+      
+      - name: TypeScript linting
+        run: |
+          cd infrastructure
+          npm run lint
+        continue-on-error: true
+      
+      - name: Check for secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD

@@ -1,0 +1,36 @@
+{
+  "name": "vehicle-counting-system",
+  "version": "1.0.0",
+  "description": "Vehicle Counting and Classification System using AWS AI services",
+  "scripts": {
+    "install:all": "cd infrastructure && npm install && cd .. && pip install -r requirements.txt",
+    "build": "cd infrastructure && npm run build",
+    "test": "npm run test:python && npm run test:cdk",
+    "test:python": "pytest lambda/tests/ -v",
+    "test:cdk": "cd infrastructure && npm test",
+    "synth": "cd infrastructure && cdk synth",
+    "deploy:dev": "cd infrastructure && cdk deploy --all --profile dev",
+    "deploy:prod": "cd infrastructure && cdk deploy --all --profile prod",
+    "clean": "cd infrastructure && npm run clean && rm -rf lambda/**/__pycache__ .pytest_cache",
+    "lint": "npm run lint:python && npm run lint:typescript",
+    "lint:python": "flake8 lambda/ --count --statistics",
+    "lint:typescript": "cd infrastructure && npm run lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-username/vehicle-counting-system.git"
+  },
+  "keywords": [
+    "aws",
+    "rekognition",
+    "video-analysis",
+    "vehicle-detection",
+    "cdk",
+    "serverless"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}
