@@ -1,6 +1,8 @@
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as s3n from 'aws-cdk-lib/aws-s3-notifications';
 import { Construct } from 'constructs';
 import { CoreStack } from './core-stack';
 
@@ -39,8 +41,64 @@ export class LambdaStack extends cdk.Stack {
     // Grant S3 permissions to Upload Handler
     coreStack.storageBucket.grantReadWrite(this.uploadHandler);
 
+    // Video Processor Lambda
+    this.videoProcessor = new lambda.Function(this, 'VideoProcessor', {
+      functionName: `VehicleAnalysis-VideoProcessor-${environment}`,
+      runtime: lambda.Runtime.PYTHON_3_9,
+      handler: 'handler.lambda_handler',
+      code: lambda.Code.fromAsset('../lambda/video-processor'),
+      timeout: cdk.Duration.minutes(5),
+      memorySize: 256,
+      role: coreStack.lambdaExecutionRole,
+      environment: {
+        SNS_TOPIC_ARN: coreStack.rekognitionCompletionTopic.topicArn,
+        REKOGNITION_ROLE_ARN: coreStack.rekognitionServiceRole.roleArn,
+        ENVIRONMENT: environment,
+      },
+      description: `Video Processor Lambda for Vehicle Analysis - ${environment}`,
+    });
+
+    // Grant permissions to Video Processor
+    coreStack.storageBucket.grantReadWrite(this.videoProcessor);
+    coreStack.rekognitionCompletionTopic.grantPublish(this.videoProcessor);
+    
+    // Grant Rekognition permissions to Video Processor
+    this.videoProcessor.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'rekognition:StartLabelDetection',
+          'rekognition:GetLabelDetection',
+          'rekognition:DescribeCollection',
+        ],
+        resources: ['*'],
+      })
+    );
+
+    // Add S3 event trigger for Video Processor
+    coreStack.storageBucket.addEventNotification(
+      s3.EventType.OBJECT_CREATED,
+      new s3n.LambdaDestination(this.videoProcessor),
+      {
+        prefix: 'uploads/',
+        suffix: '.mp4',
+      }
+    );
+    
+    // Also trigger for other video formats
+    const videoExtensions = ['.mov', '.avi', '.mkv', '.webm'];
+    videoExtensions.forEach(ext => {
+      coreStack.storageBucket.addEventNotification(
+        s3.EventType.OBJECT_CREATED,
+        new s3n.LambdaDestination(this.videoProcessor),
+        {
+          prefix: 'uploads/',
+          suffix: ext,
+        }
+      );
+    });
+
     // Placeholder for other Lambda functions (to be implemented)
-    this.videoProcessor = this.createPlaceholderFunction('VideoProcessor', environment);
     this.resultsProcessor = this.createPlaceholderFunction('ResultsProcessor', environment);
     this.resultsApi = this.createPlaceholderFunction('ResultsApi', environment);
 
@@ -55,6 +113,18 @@ export class LambdaStack extends cdk.Stack {
       value: this.uploadHandler.functionArn,
       description: 'ARN of the Upload Handler Lambda function',
       exportName: `${this.stackName}-UploadHandlerFunctionArn`,
+    });
+
+    new cdk.CfnOutput(this, 'VideoProcessorFunctionName', {
+      value: this.videoProcessor.functionName,
+      description: 'Name of the Video Processor Lambda function',
+      exportName: `${this.stackName}-VideoProcessorFunctionName`,
+    });
+
+    new cdk.CfnOutput(this, 'VideoProcessorFunctionArn', {
+      value: this.videoProcessor.functionArn,
+      description: 'ARN of the Video Processor Lambda function',
+      exportName: `${this.stackName}-VideoProcessorFunctionArn`,
     });
 
     // Tags for cost tracking

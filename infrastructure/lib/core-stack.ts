@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as sns from 'aws-cdk-lib/aws-sns';
 import { Construct } from 'constructs';
 
 export interface CoreStackProps extends cdk.StackProps {
@@ -12,6 +13,7 @@ export class CoreStack extends cdk.Stack {
   public readonly webBucket: s3.Bucket;
   public readonly lambdaExecutionRole: iam.Role;
   public readonly rekognitionServiceRole: iam.Role;
+  public readonly rekognitionCompletionTopic: sns.Topic;
 
   constructor(scope: Construct, id: string, props: CoreStackProps) {
     super(scope, id, props);
@@ -153,6 +155,15 @@ export class CoreStack extends cdk.Stack {
       },
     });
 
+    // SNS Topic for Rekognition completion notifications
+    this.rekognitionCompletionTopic = new sns.Topic(this, 'RekognitionCompletionTopic', {
+      topicName: `VehicleAnalysis-RekognitionCompletion-${environment}`,
+      displayName: 'Vehicle Analysis Rekognition Completion Notifications',
+    });
+
+    // Grant Rekognition service role permission to publish to SNS topic
+    this.rekognitionCompletionTopic.grantPublish(this.rekognitionServiceRole);
+
     // CloudFormation Outputs
     new cdk.CfnOutput(this, 'StorageBucketName', {
       value: this.storageBucket.bucketName,
@@ -182,6 +193,12 @@ export class CoreStack extends cdk.Stack {
       value: this.rekognitionServiceRole.roleArn,
       description: 'ARN of the Rekognition service role',
       exportName: `${this.stackName}-RekognitionServiceRoleArn`,
+    });
+
+    new cdk.CfnOutput(this, 'RekognitionCompletionTopicArn', {
+      value: this.rekognitionCompletionTopic.topicArn,
+      description: 'ARN of the SNS topic for Rekognition completion notifications',
+      exportName: `${this.stackName}-RekognitionCompletionTopicArn`,
     });
 
     // Tags for cost tracking

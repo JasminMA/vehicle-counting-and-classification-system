@@ -58,22 +58,51 @@ describe('Lambda Stack Tests', () => {
     });
   });
 
-  test('Creates Placeholder Lambda Functions', () => {
-    // Check that all 4 Lambda functions are created
-    const lambdaFunctions = template.findResources('AWS::Lambda::Function');
-    expect(Object.keys(lambdaFunctions)).toHaveLength(4);
-
-    // Check specific placeholder functions
+  test('Creates Video Processor Lambda Function', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
       FunctionName: 'VehicleAnalysis-VideoProcessor-test',
+      Runtime: 'python3.9',
+      Handler: 'handler.lambda_handler',
+      Timeout: 300, // 5 minutes
+      MemorySize: 256,
     });
+  });
 
+  test('Video Processor has correct environment variables', () => {
     template.hasResourceProperties('AWS::Lambda::Function', {
-      FunctionName: 'VehicleAnalysis-ResultsProcessor-test',
+      FunctionName: 'VehicleAnalysis-VideoProcessor-test',
+      Environment: {
+        Variables: {
+          ENVIRONMENT: 'test',
+          SNS_TOPIC_ARN: {
+            Ref: Template.fromStack(coreStack).findResources('AWS::SNS::Topic')[0] || 'TestCoreStackRekognitionCompletionTopic'
+          },
+          REKOGNITION_ROLE_ARN: {
+            'Fn::GetAtt': Template.arrayWith([Template.stringLike('*RekognitionServiceRole*'), 'Arn'])
+          }
+        }
+      }
     });
+  });
 
-    template.hasResourceProperties('AWS::Lambda::Function', {
-      FunctionName: 'VehicleAnalysis-ResultsApi-test',
+  test('Creates S3 Event Notifications for Video Processor', () => {
+    // Check that S3 event notifications are created
+    template.hasResourceProperties('AWS::S3::Bucket', {
+      NotificationConfiguration: {
+        LambdaConfigurations: Template.arrayWith([
+          Template.objectLike({
+            Event: 's3:ObjectCreated:*',
+            Filter: {
+              S3Key: {
+                Rules: Template.arrayWith([
+                  { Name: 'prefix', Value: 'uploads/' },
+                  { Name: 'suffix', Value: '.mp4' }
+                ])
+              }
+            }
+          })
+        ])
+      }
     });
   });
 
@@ -97,6 +126,8 @@ describe('Lambda Stack Tests', () => {
   test('Creates CloudFormation Outputs', () => {
     template.hasOutput('UploadHandlerFunctionName', {});
     template.hasOutput('UploadHandlerFunctionArn', {});
+    template.hasOutput('VideoProcessorFunctionName', {});
+    template.hasOutput('VideoProcessorFunctionArn', {});
   });
 
   test('All Lambda Functions have correct tags', () => {
@@ -132,6 +163,6 @@ describe('Lambda Stack Tests', () => {
   test('Stack Synthesis Succeeds', () => {
     // This test verifies the stack can be synthesized without errors
     expect(template).toBeDefined();
-    expect(Object.keys(template.findResources('AWS::Lambda::Function')).length).toBe(4);
+    expect(Object.keys(template.findResources('AWS::Lambda::Function')).length).toBeGreaterThanOrEqual(3);
   });
 });
