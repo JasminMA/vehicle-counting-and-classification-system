@@ -73,7 +73,12 @@ export class CoreStack extends cdk.Stack {
       publicReadAccess: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY, // For dev/testing
       autoDeleteObjects: true, // For dev/testing
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ACLS,
+      blockPublicAccess: new s3.BlockPublicAccess({
+        blockPublicAcls: true,
+        blockPublicPolicy: false, // Allow public bucket policy for website
+        ignorePublicAcls: true,
+        restrictPublicBuckets: false, // Allow public bucket for website
+      }),
     });
 
     // IAM Role for Lambda functions

@@ -1,0 +1,3 @@
+# Upload Handler Lambda Requirements
+boto3==1.26.137
+botocore==1.29.137
