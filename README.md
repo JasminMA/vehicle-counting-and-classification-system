@@ -67,10 +67,10 @@ npm run deploy:dev
 
 ## Development Status
 - [x] Project setup and CI/CD
-- [x] Core infrastructure (S3, IAM)
+- [x] Core infrastructure (S3, IAM, SNS)
 - [x] Upload Handler Lambda function
 - [x] Video Processor Lambda function
-- [ ] Results Processor Lambda
+- [x] Results Processor Lambda function
 - [ ] Results API Lambda
 - [ ] API Gateway integration
 - [ ] Web UI

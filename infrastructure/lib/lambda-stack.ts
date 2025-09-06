@@ -3,6 +3,8 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3n from 'aws-cdk-lib/aws-s3-notifications';
+import * as sns from 'aws-cdk-lib/aws-sns';
+import * as snsSubscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import { Construct } from 'constructs';
 import { CoreStack } from './core-stack';
 
@@ -98,8 +100,43 @@ export class LambdaStack extends cdk.Stack {
       );
     });
 
-    // Placeholder for other Lambda functions (to be implemented)
-    this.resultsProcessor = this.createPlaceholderFunction('ResultsProcessor', environment);
+    // Results Processor Lambda
+    this.resultsProcessor = new lambda.Function(this, 'ResultsProcessor', {
+      functionName: `VehicleAnalysis-ResultsProcessor-${environment}`,
+      runtime: lambda.Runtime.PYTHON_3_9,
+      handler: 'handler.lambda_handler',
+      code: lambda.Code.fromAsset('../lambda/results-processor'),
+      timeout: cdk.Duration.minutes(10),
+      memorySize: 512,
+      role: coreStack.lambdaExecutionRole,
+      environment: {
+        STORAGE_BUCKET_NAME: coreStack.storageBucket.bucketName,
+        ENVIRONMENT: environment,
+      },
+      description: `Results Processor Lambda for Vehicle Analysis - ${environment}`,
+    });
+
+    // Grant permissions to Results Processor
+    coreStack.storageBucket.grantReadWrite(this.resultsProcessor);
+    
+    // Grant Rekognition permissions to Results Processor
+    this.resultsProcessor.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'rekognition:GetLabelDetection',
+          'rekognition:DescribeCollection',
+        ],
+        resources: ['*'],
+      })
+    );
+
+    // Add SNS trigger for Results Processor
+    coreStack.rekognitionCompletionTopic.addSubscription(
+      new snsSubscriptions.LambdaSubscription(this.resultsProcessor)
+    );
+
+    // Placeholder for Results API (to be implemented)
     this.resultsApi = this.createPlaceholderFunction('ResultsApi', environment);
 
     // CloudFormation Outputs
@@ -125,6 +162,18 @@ export class LambdaStack extends cdk.Stack {
       value: this.videoProcessor.functionArn,
       description: 'ARN of the Video Processor Lambda function',
       exportName: `${this.stackName}-VideoProcessorFunctionArn`,
+    });
+
+    new cdk.CfnOutput(this, 'ResultsProcessorFunctionName', {
+      value: this.resultsProcessor.functionName,
+      description: 'Name of the Results Processor Lambda function',
+      exportName: `${this.stackName}-ResultsProcessorFunctionName`,
+    });
+
+    new cdk.CfnOutput(this, 'ResultsProcessorFunctionArn', {
+      value: this.resultsProcessor.functionArn,
+      description: 'ARN of the Results Processor Lambda function',
+      exportName: `${this.stackName}-ResultsProcessorFunctionArn`,
     });
 
     // Tags for cost tracking

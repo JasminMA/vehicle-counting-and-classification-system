@@ -1,0 +1,22 @@
+{
+  "Records": [
+    {
+      "EventSource": "aws:sns",
+      "EventSubscriptionArn": "arn:aws:sns:us-east-1:123456789012:VehicleAnalysis-RekognitionCompletion-dev:12345678-1234-1234-1234-123456789012",
+      "EventVersion": "1.0",
+      "Sns": {
+        "Type": "Notification",
+        "MessageId": "12345678-1234-1234-1234-123456789012",
+        "TopicArn": "arn:aws:sns:us-east-1:123456789012:VehicleAnalysis-RekognitionCompletion-dev",
+        "Subject": "Amazon Rekognition Video Review Job Complete",
+        "Message": "{\"JobId\":\"rekognition-job-12345\",\"Status\":\"SUCCEEDED\",\"API\":\"StartLabelDetection\",\"JobTag\":\"job-20240101-120000-abc123\",\"Timestamp\":1640995200000,\"Video\":{\"S3ObjectName\":\"test_video.mp4\",\"S3Bucket\":\"vehicle-analysis-storage-dev-123456789012\"}}",
+        "Timestamp": "2024-01-01T12:00:00.000Z",
+        "SignatureVersion": "1",
+        "Signature": "example-signature",
+        "SigningCertUrl": "https://sns.us-east-1.amazonaws.com/SimpleNotificationService-example.pem",
+        "UnsubscribeUrl": "https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-1:123456789012:VehicleAnalysis-RekognitionCompletion-dev:12345678-1234-1234-1234-123456789012",
+        "MessageAttributes": {}
+      }
+    }
+  ]
+}
