@@ -71,7 +71,7 @@ npm run deploy:dev
 - [x] Upload Handler Lambda function
 - [x] Video Processor Lambda function
 - [x] Results Processor Lambda function
-- [ ] Results API Lambda
+- [x] Results API Lambda function
 - [ ] API Gateway integration
 - [ ] Web UI
 - [ ] Testing and deployment

@@ -136,8 +136,24 @@ export class LambdaStack extends cdk.Stack {
       new snsSubscriptions.LambdaSubscription(this.resultsProcessor)
     );
 
-    // Placeholder for Results API (to be implemented)
-    this.resultsApi = this.createPlaceholderFunction('ResultsApi', environment);
+    // Results API Lambda
+    this.resultsApi = new lambda.Function(this, 'ResultsApi', {
+      functionName: `VehicleAnalysis-ResultsApi-${environment}`,
+      runtime: lambda.Runtime.PYTHON_3_9,
+      handler: 'handler.lambda_handler',
+      code: lambda.Code.fromAsset('../lambda/results-api'),
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+      role: coreStack.lambdaExecutionRole,
+      environment: {
+        STORAGE_BUCKET_NAME: coreStack.storageBucket.bucketName,
+        ENVIRONMENT: environment,
+      },
+      description: `Results API Lambda for Vehicle Analysis - ${environment}`,
+    });
+
+    // Grant S3 permissions to Results API
+    coreStack.storageBucket.grantRead(this.resultsApi);
 
     // CloudFormation Outputs
     new cdk.CfnOutput(this, 'UploadHandlerFunctionName', {
@@ -176,27 +192,21 @@ export class LambdaStack extends cdk.Stack {
       exportName: `${this.stackName}-ResultsProcessorFunctionArn`,
     });
 
+    new cdk.CfnOutput(this, 'ResultsApiFunctionName', {
+      value: this.resultsApi.functionName,
+      description: 'Name of the Results API Lambda function',
+      exportName: `${this.stackName}-ResultsApiFunctionName`,
+    });
+
+    new cdk.CfnOutput(this, 'ResultsApiFunctionArn', {
+      value: this.resultsApi.functionArn,
+      description: 'ARN of the Results API Lambda function',
+      exportName: `${this.stackName}-ResultsApiFunctionArn`,
+    });
+
     // Tags for cost tracking
     cdk.Tags.of(this).add('Project', 'VehicleAnalysis');
     cdk.Tags.of(this).add('Environment', environment);
     cdk.Tags.of(this).add('Stack', 'Lambda');
-  }
-
-  private createPlaceholderFunction(name: string, environment: string): lambda.Function {
-    return new lambda.Function(this, name, {
-      functionName: `VehicleAnalysis-${name}-${environment}`,
-      runtime: lambda.Runtime.PYTHON_3_9,
-      handler: 'index.handler',
-      code: lambda.Code.fromInline(`
-def handler(event, context):
-    return {
-        'statusCode': 200,
-        'body': 'Placeholder function - not implemented yet'
-    }
-      `),
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 128,
-      description: `Placeholder ${name} Lambda for Vehicle Analysis - ${environment}`,
-    });
   }
 }
