@@ -10,7 +10,7 @@ Automated video analysis system that counts and classifies vehicles using AWS AI
 
 ### Prerequisites
 - Node.js 18+
-- Python 3.9+
+- Python 3.13
 - AWS CLI configured
 - AWS CDK installed globally
 

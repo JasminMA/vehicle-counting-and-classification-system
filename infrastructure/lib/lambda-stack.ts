@@ -27,7 +27,7 @@ export class LambdaStack extends cdk.Stack {
     // Upload Handler Lambda
     this.uploadHandler = new lambda.Function(this, 'UploadHandler', {
       functionName: `VehicleAnalysis-UploadHandler-${environment}`,
-      runtime: lambda.Runtime.PYTHON_3_9,
+      runtime: lambda.Runtime.PYTHON_3_13,
       handler: 'handler.lambda_handler',
       code: lambda.Code.fromAsset('../lambda/upload-handler'),
       timeout: cdk.Duration.seconds(30),
@@ -46,7 +46,7 @@ export class LambdaStack extends cdk.Stack {
     // Video Processor Lambda
     this.videoProcessor = new lambda.Function(this, 'VideoProcessor', {
       functionName: `VehicleAnalysis-VideoProcessor-${environment}`,
-      runtime: lambda.Runtime.PYTHON_3_9,
+      runtime: lambda.Runtime.PYTHON_3_13,
       handler: 'handler.lambda_handler',
       code: lambda.Code.fromAsset('../lambda/video-processor'),
       timeout: cdk.Duration.minutes(5),
@@ -103,7 +103,7 @@ export class LambdaStack extends cdk.Stack {
     // Results Processor Lambda
     this.resultsProcessor = new lambda.Function(this, 'ResultsProcessor', {
       functionName: `VehicleAnalysis-ResultsProcessor-${environment}`,
-      runtime: lambda.Runtime.PYTHON_3_9,
+      runtime: lambda.Runtime.PYTHON_3_13,
       handler: 'handler.lambda_handler',
       code: lambda.Code.fromAsset('../lambda/results-processor'),
       timeout: cdk.Duration.minutes(10),
@@ -139,7 +139,7 @@ export class LambdaStack extends cdk.Stack {
     // Results API Lambda
     this.resultsApi = new lambda.Function(this, 'ResultsApi', {
       functionName: `VehicleAnalysis-ResultsApi-${environment}`,
-      runtime: lambda.Runtime.PYTHON_3_9,
+      runtime: lambda.Runtime.PYTHON_3_13,
       handler: 'handler.lambda_handler',
       code: lambda.Code.fromAsset('../lambda/results-api'),
       timeout: cdk.Duration.seconds(30),

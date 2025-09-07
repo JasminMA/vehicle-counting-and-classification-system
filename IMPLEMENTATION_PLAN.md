@@ -19,7 +19,7 @@ Complete implementation roadmap for building the vehicle counting system using A
 
 ### Development Tools:
 - **TypeScript** - CDK infrastructure code
-- **Python 3.9+** - Lambda functions
+- **Python 3.13+** - Lambda functions
 - **Node.js/npm** - CDK runtime and package management
 - **HTML/CSS/JavaScript** - Web UI
 - **pytest** - Lambda function testing
@@ -104,7 +104,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.13'
       - uses: actions/setup-node@v3
         with:
           node-version: '18'
@@ -432,7 +432,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.13'
       - uses: actions/setup-node@v3
         with:
           node-version: '18'

@@ -48,23 +48,23 @@ A simplified AWS-based system for counting and classifying vehicles in uploaded 
 - **Function 1: Upload Handler** (`handle-upload-request`)
   - Generates pre-signed S3 upload URLs
   - Returns job ID for tracking
-  - Runtime: Python 3.9, Timeout: 30 seconds
+  - Runtime: Python 3.13, Timeout: 30 seconds
 
 - **Function 2: Video Processor** (`process-video-upload`)
   - Triggered by S3 upload event
   - Starts Rekognition Video analysis job
-  - Runtime: Python 3.9, Timeout: 5 minutes
+  - Runtime: Python 3.13, Timeout: 5 minutes
   
 - **Function 3: Results Processor** (`process-rekognition-results`)
   - Triggered by Rekognition job completion (SNS)
   - Filters and classifies vehicle detections
   - Generates summary reports and saves to S3
-  - Runtime: Python 3.9, Timeout: 10 minutes
+  - Runtime: Python 3.13, Timeout: 10 minutes
 
 - **Function 4: Results API Handler** (`get-results`)
   - Returns analysis results from S3
   - Only responds when processing is complete
-  - Runtime: Python 3.9, Timeout: 30 seconds
+  - Runtime: Python 3.13, Timeout: 30 seconds
 
 #### 6. **Job Tracking (S3 Metadata + File-based)**
 - **No DynamoDB needed**: Use S3 object metadata and file naming conventions
