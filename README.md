@@ -64,6 +64,7 @@ npm run deploy:dev
 - [Implementation Plan](IMPLEMENTATION_PLAN.md)
 - [Client Overview](CLIENT_OVERVIEW.md)
 - [AWS Deployment Strategy](AWS_DEPLOYMENT_STRATEGY.md)
+- [API Documentation](docs/API_DOCUMENTATION.md)
 
 ## Development Status
 - [x] Project setup and CI/CD
@@ -72,7 +73,7 @@ npm run deploy:dev
 - [x] Video Processor Lambda function
 - [x] Results Processor Lambda function
 - [x] Results API Lambda function
-- [ ] API Gateway integration
+- [x] API Gateway integration
 - [ ] Web UI
 - [ ] Testing and deployment
 
