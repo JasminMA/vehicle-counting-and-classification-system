@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vehicle Analysis System</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="container">
+                <div class="header-content">
+                    <div class="logo">
+                        <h1>🚗 Vehicle Analysis</h1>
+                        <span class="version">v1.0</span>
+                    </div>
+                    <div class="header-actions">
+                        <button id="helpBtn" class="btn btn-outline">Help</button>
+                        <div class="api-status" id="apiStatus">
+                            <span class="status-indicator"></span>
+                            <span class="status-text">Checking...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                
+                <!-- Upload Section -->
+                <section class="upload-section" id="uploadSection">
+                    <div class="section-header">
+                        <h2>Upload Video for Analysis</h2>
+                        <p>Upload a video file to analyze vehicle counts and classifications</p>
+                    </div>
+                    
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-zone" id="uploadZone">
+                            <input type="file" id="videoInput" accept="video/*" hidden>
+                            
+                            <div class="upload-content" id="uploadContent">
+                                <div class="upload-icon">📹</div>
+                                <h3>Drag & drop your video here</h3>
+                                <p>or <button type="button" class="btn-link" id="browseBtn">browse files</button></p>
+                                
+                                <div class="upload-info">
+                                    <div class="info-item">
+                                        <strong>Supported formats:</strong> MP4, MOV, AVI, MKV, WEBM
+                                    </div>
+                                    <div class="info-item">
+                                        <strong>Maximum size:</strong> 8GB
+                                    </div>
+                                    <div class="info-item">
+                                        <strong>Recommended length:</strong> Up to 30 minutes
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Upload Progress -->
+                            <div class="upload-progress" id="uploadProgress" style="display: none;">
+                                <div class="progress-info">
+                                    <span class="file-name" id="fileName"></span>
+                                    <span class="file-size" id="fileSize"></span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="progressFill"></div>
+                                </div>
+                                <div class="progress-text">
+                                    <span id="progressText">0%</span>
+                                    <button type="button" id="cancelUpload" class="btn-link danger">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Jobs Section -->
+                <section class="jobs-section" id="jobsSection">
+                    <div class="section-header">
+                        <h2>Analysis Jobs</h2>
+                        <div class="section-actions">
+                            <button id="refreshJobs" class="btn btn-outline">
+                                <span class="refresh-icon">🔄</span> Refresh
+                            </button>
+                            <button id="clearCompleted" class="btn btn-outline">Clear Completed</button>
+                        </div>
+                    </div>
+                    
+                    <div class="jobs-container">
+                        <div class="jobs-list" id="jobsList">
+                            <!-- Jobs will be dynamically added here -->
+                        </div>
+                        
+                        <div class="empty-state" id="emptyState">
+                            <div class="empty-icon">📊</div>
+                            <h3>No analysis jobs yet</h3>
+                            <p>Upload a video to start analyzing vehicle counts</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Results Section -->
+                <section class="results-section" id="resultsSection" style="display: none;">
+                    <div class="section-header">
+                        <h2>Analysis Results</h2>
+                        <div class="section-actions">
+                            <button id="downloadJson" class="btn btn-primary">
+                                <span class="download-icon">💾</span> Download JSON
+                            </button>
+                            <button id="downloadCsv" class="btn btn-outline">
+                                <span class="download-icon">💾</span> Download CSV
+                            </button>
+                            <button id="closeResults" class="btn btn-outline">Close</button>
+                        </div>
+                    </div>
+                    
+                    <div class="results-content" id="resultsContent">
+                        <!-- Results will be dynamically populated -->
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="container">
+                <div class="footer-content">
+                    <div class="footer-info">
+                        <p>&copy; 2024 Vehicle Analysis System. Built with AWS AI Services.</p>
+                    </div>
+                    <div class="footer-links">
+                        <button id="aboutBtn" class="btn-link">About</button>
+                        <span class="separator">|</span>
+                        <button id="privacyBtn" class="btn-link">Privacy</button>
+                        <span class="separator">|</span>
+                        <a href="docs/API_DOCUMENTATION.md" target="_blank" class="btn-link">API Docs</a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modals -->
+    
+    <!-- Help Modal -->
+    <div class="modal" id="helpModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>How to Use Vehicle Analysis</h3>
+                <button class="modal-close" data-modal="helpModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="help-section">
+                    <h4>📹 Upload Video</h4>
+                    <p>Drag and drop your video file or click browse to select a file. Supported formats include MP4, MOV, AVI, MKV, and WEBM up to 8GB in size.</p>
+                </div>
+                
+                <div class="help-section">
+                    <h4>⏱️ Processing Time</h4>
+                    <p>Analysis typically takes 1-5 minutes depending on video length. You can track progress in the jobs section.</p>
+                </div>
+                
+                <div class="help-section">
+                    <h4>🚗 Vehicle Types</h4>
+                    <p>The system detects and counts: cars, trucks, motorcycles, buses, vans, and emergency vehicles with confidence scores.</p>
+                </div>
+                
+                <div class="help-section">
+                    <h4>📊 Results</h4>
+                    <p>View summary counts, detailed timeline, and download complete data in JSON or CSV format for further analysis.</p>
+                </div>
+                
+                <div class="help-section">
+                    <h4>🔧 Troubleshooting</h4>
+                    <ul>
+                        <li>Ensure video is clear and vehicles are visible</li>
+                        <li>Best results with daylight videos and stable camera</li>
+                        <li>Night or foggy videos may have lower accuracy</li>
+                        <li>Contact support if processing fails repeatedly</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div class="modal" id="aboutModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>About Vehicle Analysis System</h3>
+                <button class="modal-close" data-modal="aboutModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="about-section">
+                    <h4>🎯 Purpose</h4>
+                    <p>This system uses advanced AI to automatically count and classify vehicles in video footage, providing accurate traffic analysis for transportation planning, security monitoring, and research purposes.</p>
+                </div>
+                
+                <div class="about-section">
+                    <h4>🧠 Technology</h4>
+                    <p>Built with AWS Rekognition Video for object detection, Lambda functions for processing, and intelligent algorithms for vehicle tracking and counting.</p>
+                </div>
+                
+                <div class="about-section">
+                    <h4>🎯 Accuracy</h4>
+                    <p>Achieves 85-95% accuracy under good conditions. Performance varies based on video quality, lighting, and camera angle.</p>
+                </div>
+                
+                <div class="about-section">
+                    <h4>🔒 Privacy</h4>
+                    <p>Videos are automatically deleted after 30 days. All processing occurs securely in AWS infrastructure with no permanent storage of your content.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Privacy Modal -->
+    <div class="modal" id="privacyModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Privacy Policy</h3>
+                <button class="modal-close" data-modal="privacyModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="privacy-section">
+                    <h4>📁 Data Collection</h4>
+                    <p>We only collect the video files you upload for analysis. No personal information is required or stored.</p>
+                </div>
+                
+                <div class="privacy-section">
+                    <h4>🔒 Data Security</h4>
+                    <p>All uploads are encrypted and processed securely using AWS infrastructure. Videos are stored temporarily only during processing.</p>
+                </div>
+                
+                <div class="privacy-section">
+                    <h4>🗑️ Data Retention</h4>
+                    <p>Uploaded videos are automatically deleted after 30 days. Analysis results are retained for 90 days and can be downloaded during this period.</p>
+                </div>
+                
+                <div class="privacy-section">
+                    <h4>🤝 Data Sharing</h4>
+                    <p>We do not share, sell, or distribute your videos or analysis results with third parties. All data remains private to your session.</p>
+                </div>
+                
+                <div class="privacy-section">
+                    <h4>📧 Contact</h4>
+                    <p>For privacy concerns or data deletion requests, please contact our support team.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Toast -->
+    <div class="toast toast-error" id="errorToast">
+        <div class="toast-content">
+            <span class="toast-icon">❌</span>
+            <span class="toast-message" id="errorMessage"></span>
+            <button class="toast-close" onclick="hideToast('errorToast')">&times;</button>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div class="toast toast-success" id="successToast">
+        <div class="toast-content">
+            <span class="toast-icon">✅</span>
+            <span class="toast-message" id="successMessage"></span>
+            <button class="toast-close" onclick="hideToast('successToast')">&times;</button>
+        </div>
+    </div>
+
+    <!-- Configuration -->
+    <script>
+        // Configuration - Update this with your API Gateway URL
+        window.APP_CONFIG = {
+            API_BASE_URL: 'https://your-api-id.execute-api.us-east-1.amazonaws.com/dev/',
+            MAX_FILE_SIZE: 8 * 1024 * 1024 * 1024, // 8GB
+            SUPPORTED_FORMATS: ['mp4', 'mov', 'avi', 'mkv', 'webm'],
+            POLL_INTERVAL: 10000, // 10 seconds
+            MAX_JOBS_DISPLAY: 10
+        };
+    </script>
+    
+    <!-- Scripts -->
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/upload.js"></script>
+    <script src="js/jobs.js"></script>
+    <script src="js/results.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

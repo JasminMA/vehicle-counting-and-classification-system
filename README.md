@@ -74,8 +74,8 @@ npm run deploy:dev
 - [x] Results Processor Lambda function
 - [x] Results API Lambda function
 - [x] API Gateway integration
-- [ ] Web UI
-- [ ] Testing and deployment
+- [x] Web UI implementation
+- [ ] End-to-end testing and deployment
 
 ## License
 MIT
