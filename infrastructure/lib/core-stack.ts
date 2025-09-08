@@ -55,6 +55,17 @@ export class CoreStack extends cdk.Stack {
               ],
               resources: ['*'],
             }),
+            // Add iam:PassRole permission to pass Rekognition service role
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: ['iam:PassRole'],
+              resources: [`arn:aws:iam::${this.account}:role/VehicleAnalysis-RekognitionService-${environment}`],
+              conditions: {
+                StringEquals: {
+                  'iam:PassedToService': 'rekognition.amazonaws.com'
+                }
+              }
+            }),
           ],
         }),
         SNSAccess: new iam.PolicyDocument({
