@@ -128,12 +128,6 @@ cd web-ui
 # Python 3
 python -m http.server 8000
 
-# Python 2
-python -m SimpleHTTPServer 8000
-
-# Node.js (if you have npx installed)
-npx serve . -p 8000
-
 # Access at: http://localhost:8000
 ```
 

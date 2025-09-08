@@ -134,7 +134,7 @@ class VehicleAnalysisAPI {
             };
 
             xhr.open('PUT', uploadUrl);
-            xhr.setRequestHeader('Content-Type', file.type || 'video/*');
+            xhr.setRequestHeader('Content-Type', 'video/*');
             xhr.send(file);
         });
     }
@@ -285,11 +285,14 @@ class JobManager {
      */
     emit(event, data) {
         const handlers = this.eventHandlers.get(event) || [];
-        handlers.forEach(handler => {
+        console.log(`Emitting event '${event}' to ${handlers.length} handler(s):`, data);
+        
+        handlers.forEach((handler, index) => {
             try {
+                console.log(`Calling handler ${index + 1} for event '${event}'`);
                 handler(data);
             } catch (error) {
-                console.error('Event handler error:', error);
+                console.error(`Event handler ${index + 1} error:`, error);
             }
         });
     }
@@ -300,6 +303,10 @@ class JobManager {
      * @param {Object} jobData - Job data
      */
     addJob(jobId, jobData = {}) {
+        // Only clear failed uploads, not processing jobs
+        // This allows multiple jobs to run concurrently
+        this.clearFailedUploads();
+        
         const job = {
             id: jobId,
             status: 'pending',
@@ -379,9 +386,13 @@ class JobManager {
                 if (status.status === 'completed' || status.status === 'failed') {
                     this.stopPolling(jobId);
                     
+                    console.log(`Job ${jobId} status changed to ${status.status}, emitting event...`);
+                    
                     if (status.status === 'completed') {
+                        console.log('Emitting jobCompleted event for:', jobId);
                         this.emit('jobCompleted', { jobId, status });
                     } else {
+                        console.log('Emitting jobFailed event for:', jobId);
                         this.emit('jobFailed', { jobId, status });
                     }
                 }
@@ -462,6 +473,60 @@ class JobManager {
         this.saveToStorage();
         this.emit('jobsCleared', completedJobs);
     }
+
+    /**
+     * Clear incomplete jobs (pending, uploading, processing)
+     * But preserve jobs that are actively polling for completion
+     */
+    clearIncompleteJobs() {
+        const incompleteJobs = [];
+        this.jobs.forEach((job, jobId) => {
+            // Don't clear jobs that are processing - they might complete soon
+            if (job.status === 'pending' || job.status === 'uploading') {
+                incompleteJobs.push(jobId);
+            }
+        });
+
+        incompleteJobs.forEach(jobId => {
+            console.log('Removing incomplete job to prevent duplicate polling:', jobId);
+            this.removeJob(jobId);
+        });
+
+        if (incompleteJobs.length > 0) {
+            console.log(`Cleared ${incompleteJobs.length} incomplete job(s) before starting new upload`);
+        }
+    }
+
+    /**
+     * Clear only failed uploads and cancelled jobs, preserve processing jobs
+     */
+    clearFailedUploads() {
+        const failedJobs = [];
+        this.jobs.forEach((job, jobId) => {
+            // Only clear failed uploads, cancelled jobs, and very old pending jobs
+            if (job.status === 'failed' || job.status === 'cancelled' || 
+                (job.status === 'pending' && this.isJobOld(job))) {
+                failedJobs.push(jobId);
+            }
+        });
+
+        failedJobs.forEach(jobId => {
+            console.log('Removing failed/cancelled job:', jobId);
+            this.removeJob(jobId);
+        });
+
+        if (failedJobs.length > 0) {
+            console.log(`Cleared ${failedJobs.length} failed/cancelled job(s)`);
+        }
+    }
+
+    /**
+     * Check if a job is old (older than 10 minutes)
+     */
+    isJobOld(job) {
+        const jobAge = Date.now() - new Date(job.createdAt).getTime();
+        return jobAge > 10 * 60 * 1000; // 10 minutes
+    }
 }
 
 // Initialize API client and job manager
@@ -475,6 +540,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize job manager
     jobManager = new JobManager(api);
     
+    // Make jobManager immediately available globally
+    window.jobManager = jobManager;
+    
     // Load existing jobs from storage
     jobManager.loadFromStorage();
     
@@ -484,8 +552,9 @@ document.addEventListener('DOMContentLoaded', () => {
     jobManager.on('jobRemoved', () => jobManager.saveToStorage());
     
     console.log('API client initialized:', api.baseUrl);
+    console.log('JobManager initialized and available globally');
 });
 
 // Export for global use
 window.api = api;
-window.jobManager = jobManager;
+// Note: window.jobManager is set in the DOMContentLoaded event handler

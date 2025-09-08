@@ -35,6 +35,8 @@ class JobsUI {
         // Wait for job manager to be available
         const waitForJobManager = () => {
             if (window.jobManager) {
+                console.log('Setting up JobManager event listeners...');
+                
                 // Listen for job events
                 jobManager.on('jobAdded', this.onJobAdded.bind(this));
                 jobManager.on('jobUpdated', this.onJobUpdated.bind(this));
@@ -43,13 +45,37 @@ class JobsUI {
                 jobManager.on('jobFailed', this.onJobFailed.bind(this));
                 jobManager.on('jobsCleared', this.onJobsCleared.bind(this));
 
+                console.log('JobManager event listeners registered successfully');
+                
+                // Check for any jobs that completed while we were waiting
+                this.checkForCompletedJobs();
+                
                 // Initial render
                 this.renderAllJobs();
             } else {
-                setTimeout(waitForJobManager, 100);
+                console.log('JobManager not ready, waiting...');
+                setTimeout(waitForJobManager, 50); // Reduced wait time
             }
         };
+        
+        // Try immediately, then wait if needed
         waitForJobManager();
+    }
+    
+    /**
+     * Check for jobs that completed while event listeners were not set up
+     */
+    checkForCompletedJobs() {
+        if (!jobManager) return;
+        
+        const jobs = jobManager.getAllJobs();
+        jobs.forEach(job => {
+            if (job.status === 'completed' && !job.completedResults) {
+                console.log('Found completed job without results, processing now:', job.id);
+                // Simulate the completion event
+                this.onJobCompleted({ jobId: job.id, status: job });
+            }
+        });
     }
 
     onJobAdded(job) {
@@ -68,9 +94,60 @@ class JobsUI {
         this.updateEmptyState();
     }
 
-    onJobCompleted(data) {
+    async onJobCompleted(data) {
+        console.log('🎉 onJobCompleted called with data:', data);
         console.log('Job completed:', data.jobId);
-        showToast(`Analysis completed for ${this.getJobFilename(data.jobId)}`, 'success');
+        const filename = this.getJobFilename(data.jobId);
+        
+        showToast(`Analysis completed for ${filename}`, 'success');
+        
+        // Automatically fetch and display results
+        try {
+            console.log('Fetching results for completed job:', data.jobId);
+            const results = await api.getJobResults(data.jobId);
+            
+            if (results.status === 'completed' && results.results) {
+                // Update job with results data
+                jobManager.updateJob(data.jobId, {
+                    results: results.results,
+                    completedResults: true
+                });
+                
+                // Automatically show results in the UI
+                if (window.resultsUI) {
+                    window.resultsUI.showResults(results.results, data.jobId);
+                    
+                    // Scroll to results section
+                    document.getElementById('resultsSection')?.scrollIntoView({ 
+                        behavior: 'smooth' 
+                    });
+                    
+                    showToast('Results are now displayed below!', 'info', 3000);
+                } else {
+                    console.warn('ResultsUI not available, trying to wait...');
+                    
+                    // Try to wait a bit and retry
+                    setTimeout(() => {
+                        if (window.resultsUI) {
+                            window.resultsUI.showResults(results.results, data.jobId);
+                            document.getElementById('resultsSection')?.scrollIntoView({ 
+                                behavior: 'smooth' 
+                            });
+                            showToast('Results are now displayed below!', 'info', 3000);
+                        } else {
+                            console.warn('ResultsUI still not available after waiting');
+                            showToast('Results ready! Click "View Results" to see them.', 'success', 5000);
+                        }
+                    }, 500);
+                }
+            } else {
+                console.warn('Results not yet available or incomplete:', results);
+                showToast('Results not yet available, please refresh', 'info');
+            }
+        } catch (error) {
+            console.error('Failed to fetch results automatically:', error);
+            showToast('Results completed but failed to load automatically. Click "View Results" to see them.', 'warning', 5000);
+        }
     }
 
     onJobFailed(data) {
@@ -199,6 +276,14 @@ class JobsUI {
                 details.push({
                     label: 'Vehicles',
                     value: totalVehicles.toString()
+                });
+            }
+            
+            // Show that results are available
+            if (job.completedResults) {
+                details.push({
+                    label: 'Status',
+                    value: '✅ Results Available'
                 });
             }
         }
@@ -337,13 +422,30 @@ class JobsUI {
         try {
             const results = await api.getJobResults(jobId);
             if (results.status === 'completed' && results.results) {
-                // Show results in the results section
-                window.resultsUI.showResults(results.results, jobId);
-                
-                // Scroll to results section
-                document.getElementById('resultsSection').scrollIntoView({ 
-                    behavior: 'smooth' 
-                });
+                // Check if resultsUI is available
+                if (window.resultsUI) {
+                    // Show results in the results section
+                    window.resultsUI.showResults(results.results, jobId);
+                    
+                    // Scroll to results section
+                    document.getElementById('resultsSection').scrollIntoView({ 
+                        behavior: 'smooth' 
+                    });
+                } else {
+                    console.error('ResultsUI not available, trying to initialize...');
+                    
+                    // Try to wait a bit and retry
+                    setTimeout(() => {
+                        if (window.resultsUI) {
+                            window.resultsUI.showResults(results.results, jobId);
+                            document.getElementById('resultsSection').scrollIntoView({ 
+                                behavior: 'smooth' 
+                            });
+                        } else {
+                            showToast('Results viewer not ready. Please refresh the page and try again.', 'error');
+                        }
+                    }, 500);
+                }
             } else {
                 showToast('Results not yet available', 'info');
             }
@@ -521,8 +623,11 @@ document.head.appendChild(style);
 let jobsUI;
 
 document.addEventListener('DOMContentLoaded', () => {
-    jobsUI = new JobsUI();
-    console.log('Jobs UI initialized');
+    // Small delay to ensure JobManager is initialized first
+    setTimeout(() => {
+        jobsUI = new JobsUI();
+        console.log('Jobs UI initialized');
+    }, 100);
 });
 
 // Export for global use

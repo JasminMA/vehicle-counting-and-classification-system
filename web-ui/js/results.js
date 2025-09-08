@@ -165,14 +165,20 @@ class ResultsUI {
         if (videoInfo.frame_rate) {
             infoItems.push({
                 label: 'Frame Rate',
-                value: `${videoInfo.frame_rate} fps`
+                value: `${Math.round(videoInfo.frame_rate * 100) / 100} fps`
             });
         }
         
         if (videoInfo.format) {
+            // Clean up format string for better display
+            let formatDisplay = videoInfo.format;
+            if (formatDisplay.includes('/')) {
+                // Take the more common format name
+                formatDisplay = formatDisplay.split('/')[0].trim();
+            }
             infoItems.push({
                 label: 'Format',
-                value: videoInfo.format.toUpperCase()
+                value: formatDisplay
             });
         }
         
@@ -432,8 +438,12 @@ let resultsUI;
 
 document.addEventListener('DOMContentLoaded', () => {
     resultsUI = new ResultsUI();
-    console.log('Results UI initialized');
+    
+    // Make resultsUI immediately available globally
+    window.resultsUI = resultsUI;
+    
+    console.log('Results UI initialized and available globally');
 });
 
 // Export for global use
-window.resultsUI = resultsUI;
+// Note: window.resultsUI is set in the DOMContentLoaded event handler
