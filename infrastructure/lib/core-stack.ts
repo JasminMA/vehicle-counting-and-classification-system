@@ -9,7 +9,6 @@ export interface CoreStackProps extends cdk.StackProps {
 }
 
 export class CoreStack extends cdk.Stack {
-  public readonly storageBucket: s3.Bucket;
   public readonly webBucket: s3.Bucket;
   public readonly lambdaExecutionRole: iam.Role;
   public readonly rekognitionServiceRole: iam.Role;
@@ -20,52 +19,6 @@ export class CoreStack extends cdk.Stack {
 
     const { environment } = props;
 
-    // S3 bucket for videos and results with organized folder structure
-    this.storageBucket = new s3.Bucket(this, 'StorageBucket', {
-      bucketName: `vehicle-analysis-storage-${environment}-${this.account}`,
-      removalPolicy: cdk.RemovalPolicy.DESTROY, // For dev/testing - change for production
-      autoDeleteObjects: true, // For dev/testing - change for production
-      versioned: false,
-      lifecycleRules: [
-        {
-          id: 'DeleteOldUploads',
-          enabled: true,
-          prefix: 'uploads/',
-          expiration: cdk.Duration.days(30),
-        },
-        {
-          id: 'DeleteOldProcessing',
-          enabled: true,
-          prefix: 'processing/',
-          expiration: cdk.Duration.days(7),
-        },
-        {
-          id: 'DeleteOldResults',
-          enabled: true,
-          prefix: 'results/',
-          expiration: cdk.Duration.days(90),
-        },
-        {
-          id: 'DeleteOldErrors',
-          enabled: true,
-          prefix: 'errors/',
-          expiration: cdk.Duration.days(30),
-        },
-      ],
-      cors: [
-        {
-          allowedMethods: [
-            s3.HttpMethods.GET,
-            s3.HttpMethods.POST,
-            s3.HttpMethods.PUT,
-            s3.HttpMethods.DELETE,
-          ],
-          allowedOrigins: ['*'], // Will be restricted later to specific domain
-          allowedHeaders: ['*'],
-          maxAge: 3000,
-        },
-      ],
-    });
 
     // S3 bucket for web UI hosting
     this.webBucket = new s3.Bucket(this, 'WebBucket', {
@@ -91,24 +44,6 @@ export class CoreStack extends cdk.Stack {
         iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
       ],
       inlinePolicies: {
-        S3Access: new iam.PolicyDocument({
-          statements: [
-            new iam.PolicyStatement({
-              effect: iam.Effect.ALLOW,
-              actions: [
-                's3:GetObject',
-                's3:PutObject',
-                's3:DeleteObject',
-                's3:ListBucket',
-                's3:GetObjectVersion',
-              ],
-              resources: [
-                this.storageBucket.bucketArn,
-                `${this.storageBucket.bucketArn}/*`,
-              ],
-            }),
-          ],
-        }),
         RekognitionAccess: new iam.PolicyDocument({
           statements: [
             new iam.PolicyStatement({
@@ -165,12 +100,6 @@ export class CoreStack extends cdk.Stack {
     this.rekognitionCompletionTopic.grantPublish(this.rekognitionServiceRole);
 
     // CloudFormation Outputs
-    new cdk.CfnOutput(this, 'StorageBucketName', {
-      value: this.storageBucket.bucketName,
-      description: 'Name of the S3 bucket for video storage',
-      exportName: `${this.stackName}-StorageBucketName`,
-    });
-
     new cdk.CfnOutput(this, 'WebBucketName', {
       value: this.webBucket.bucketName,
       description: 'Name of the S3 bucket for web UI hosting',

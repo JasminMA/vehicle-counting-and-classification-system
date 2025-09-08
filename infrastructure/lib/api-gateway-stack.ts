@@ -20,12 +20,12 @@ export class ApiGatewayStack extends cdk.Stack {
 
     const { environment, lambdaStack } = props;
 
-    // Create CloudWatch Log Group for API Gateway
-    const apiLogGroup = new logs.LogGroup(this, 'ApiGatewayLogGroup', {
-      logGroupName: `/aws/apigateway/VehicleAnalysis-${environment}`,
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
+    // CloudWatch Log Group disabled to avoid account-level role requirement
+    // const apiLogGroup = new logs.LogGroup(this, 'ApiGatewayLogGroup', {
+    //   logGroupName: `/aws/apigateway/VehicleAnalysis-${environment}`,
+    //   retention: logs.RetentionDays.ONE_WEEK,
+    //   removalPolicy: cdk.RemovalPolicy.DESTROY,
+    // });
 
     // Create API Gateway
     this.api = new apigateway.RestApi(this, 'VehicleAnalysisApi', {
@@ -50,21 +50,22 @@ export class ApiGatewayStack extends cdk.Stack {
       // API Gateway configuration
       deployOptions: {
         stageName: environment,
-        loggingLevel: apigateway.MethodLoggingLevel.INFO,
-        dataTraceEnabled: true,
+        // Disabled logging features that require account-level CloudWatch role setup
+        // loggingLevel: apigateway.MethodLoggingLevel.INFO,
+        // dataTraceEnabled: true,
         metricsEnabled: true,
-        accessLogDestination: new apigateway.LogGroupLogDestination(apiLogGroup),
-        accessLogFormat: apigateway.AccessLogFormat.jsonWithStandardFields({
-          caller: true,
-          httpMethod: true,
-          ip: true,
-          protocol: true,
-          requestTime: true,
-          resourcePath: true,
-          responseLength: true,
-          status: true,
-          user: true,
-        }),
+        // accessLogDestination: new apigateway.LogGroupLogDestination(apiLogGroup),
+        // accessLogFormat: apigateway.AccessLogFormat.jsonWithStandardFields({
+        //   caller: true,
+        //   httpMethod: true,
+        //   ip: true,
+        //   protocol: true,
+        //   requestTime: true,
+        //   resourcePath: true,
+        //   responseLength: true,
+        //   status: true,
+        //   user: true,
+        // }),
       },
 
       // Enable request validation

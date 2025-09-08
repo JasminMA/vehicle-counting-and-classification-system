@@ -14,6 +14,8 @@ export interface LambdaStackProps extends cdk.StackProps {
 }
 
 export class LambdaStack extends cdk.Stack {
+  public readonly storageBucket: s3.Bucket;
+  public readonly lambdaExecutionRole: iam.Role;
   public readonly uploadHandler: lambda.Function;
   public readonly videoProcessor: lambda.Function;
   public readonly resultsProcessor: lambda.Function;
@@ -24,6 +26,97 @@ export class LambdaStack extends cdk.Stack {
 
     const { environment, coreStack } = props;
 
+    // S3 bucket for videos and results with organized folder structure
+    // Moved here from Core stack to avoid circular dependencies
+    this.storageBucket = new s3.Bucket(this, 'StorageBucket', {
+      bucketName: `vehicle-analysis-storage-${environment}-${this.account}`,
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // For dev/testing - change for production
+      autoDeleteObjects: true, // For dev/testing - change for production
+      versioned: false,
+      lifecycleRules: [
+        {
+          id: 'DeleteOldUploads',
+          enabled: true,
+          prefix: 'uploads/',
+          expiration: cdk.Duration.days(30),
+        },
+        {
+          id: 'DeleteOldProcessing',
+          enabled: true,
+          prefix: 'processing/',
+          expiration: cdk.Duration.days(7),
+        },
+        {
+          id: 'DeleteOldResults',
+          enabled: true,
+          prefix: 'results/',
+          expiration: cdk.Duration.days(90),
+        },
+        {
+          id: 'DeleteOldErrors',
+          enabled: true,
+          prefix: 'errors/',
+          expiration: cdk.Duration.days(30),
+        },
+      ],
+      cors: [
+        {
+          allowedMethods: [
+            s3.HttpMethods.GET,
+            s3.HttpMethods.POST,
+            s3.HttpMethods.PUT,
+            s3.HttpMethods.DELETE,
+          ],
+          allowedOrigins: ['*'], // Will be restricted later to specific domain
+          allowedHeaders: ['*'],
+          maxAge: 3000,
+        },
+      ],
+    });
+
+    // Note: S3 access policy will be added after bucket creation
+    // to avoid circular dependencies
+
+    // Create Lambda execution role in this stack to avoid circular dependencies
+    this.lambdaExecutionRole = new iam.Role(this, 'LambdaExecutionRole', {
+      roleName: `VehicleAnalysis-LambdaExecution-Lambda-${environment}`,
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
+      ],
+      inlinePolicies: {
+        RekognitionAccess: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                'rekognition:StartLabelDetection',
+                'rekognition:GetLabelDetection',
+                'rekognition:DescribeCollection',
+              ],
+              resources: ['*'],
+            }),
+          ],
+        }),
+        SNSAccess: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                'sns:Publish',
+                'sns:Subscribe',
+                'sns:Unsubscribe',
+              ],
+              resources: [`arn:aws:sns:${this.region}:${this.account}:*`],
+            }),
+          ],
+        }),
+      },
+    });
+
+    // Grant S3 access to the execution role
+    this.storageBucket.grantReadWrite(this.lambdaExecutionRole);
+
     // Upload Handler Lambda
     this.uploadHandler = new lambda.Function(this, 'UploadHandler', {
       functionName: `VehicleAnalysis-UploadHandler-${environment}`,
@@ -32,16 +125,15 @@ export class LambdaStack extends cdk.Stack {
       code: lambda.Code.fromAsset('../lambda/upload-handler'),
       timeout: cdk.Duration.seconds(30),
       memorySize: 128,
-      role: coreStack.lambdaExecutionRole,
+      role: this.lambdaExecutionRole,
       environment: {
-        STORAGE_BUCKET_NAME: coreStack.storageBucket.bucketName,
+        STORAGE_BUCKET_NAME: this.storageBucket.bucketName,
         ENVIRONMENT: environment,
       },
       description: `Upload Handler Lambda for Vehicle Analysis - ${environment}`,
     });
 
-    // Grant S3 permissions to Upload Handler
-    coreStack.storageBucket.grantReadWrite(this.uploadHandler);
+    // S3 permissions are granted through the IAM role
 
     // Video Processor Lambda
     this.videoProcessor = new lambda.Function(this, 'VideoProcessor', {
@@ -51,7 +143,7 @@ export class LambdaStack extends cdk.Stack {
       code: lambda.Code.fromAsset('../lambda/video-processor'),
       timeout: cdk.Duration.minutes(5),
       memorySize: 256,
-      role: coreStack.lambdaExecutionRole,
+      role: this.lambdaExecutionRole,
       environment: {
         SNS_TOPIC_ARN: coreStack.rekognitionCompletionTopic.topicArn,
         REKOGNITION_ROLE_ARN: coreStack.rekognitionServiceRole.roleArn,
@@ -60,25 +152,13 @@ export class LambdaStack extends cdk.Stack {
       description: `Video Processor Lambda for Vehicle Analysis - ${environment}`,
     });
 
-    // Grant permissions to Video Processor
-    coreStack.storageBucket.grantReadWrite(this.videoProcessor);
+    // Permissions are granted through the IAM role
     coreStack.rekognitionCompletionTopic.grantPublish(this.videoProcessor);
     
-    // Grant Rekognition permissions to Video Processor
-    this.videoProcessor.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-          'rekognition:StartLabelDetection',
-          'rekognition:GetLabelDetection',
-          'rekognition:DescribeCollection',
-        ],
-        resources: ['*'],
-      })
-    );
+    // Note: Rekognition permissions are now included in the main IAM role
 
-    // Add S3 event trigger for Video Processor
-    coreStack.storageBucket.addEventNotification(
+    // Configure event notifications here without circular dependencies
+    this.storageBucket.addEventNotification(
       s3.EventType.OBJECT_CREATED,
       new s3n.LambdaDestination(this.videoProcessor),
       {
@@ -90,7 +170,7 @@ export class LambdaStack extends cdk.Stack {
     // Also trigger for other video formats
     const videoExtensions = ['.mov', '.avi', '.mkv', '.webm'];
     videoExtensions.forEach(ext => {
-      coreStack.storageBucket.addEventNotification(
+      this.storageBucket.addEventNotification(
         s3.EventType.OBJECT_CREATED,
         new s3n.LambdaDestination(this.videoProcessor),
         {
@@ -108,28 +188,16 @@ export class LambdaStack extends cdk.Stack {
       code: lambda.Code.fromAsset('../lambda/results-processor'),
       timeout: cdk.Duration.minutes(10),
       memorySize: 512,
-      role: coreStack.lambdaExecutionRole,
+      role: this.lambdaExecutionRole,
       environment: {
-        STORAGE_BUCKET_NAME: coreStack.storageBucket.bucketName,
+        STORAGE_BUCKET_NAME: this.storageBucket.bucketName,
         ENVIRONMENT: environment,
       },
       description: `Results Processor Lambda for Vehicle Analysis - ${environment}`,
     });
 
-    // Grant permissions to Results Processor
-    coreStack.storageBucket.grantReadWrite(this.resultsProcessor);
-    
-    // Grant Rekognition permissions to Results Processor
-    this.resultsProcessor.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-          'rekognition:GetLabelDetection',
-          'rekognition:DescribeCollection',
-        ],
-        resources: ['*'],
-      })
-    );
+    // Permissions are granted through the IAM role
+    // Note: Rekognition permissions are now included in the main IAM role
 
     // Add SNS trigger for Results Processor
     coreStack.rekognitionCompletionTopic.addSubscription(
@@ -144,18 +212,29 @@ export class LambdaStack extends cdk.Stack {
       code: lambda.Code.fromAsset('../lambda/results-api'),
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
-      role: coreStack.lambdaExecutionRole,
+      role: this.lambdaExecutionRole,
       environment: {
-        STORAGE_BUCKET_NAME: coreStack.storageBucket.bucketName,
+        STORAGE_BUCKET_NAME: this.storageBucket.bucketName,
         ENVIRONMENT: environment,
       },
       description: `Results API Lambda for Vehicle Analysis - ${environment}`,
     });
 
-    // Grant S3 permissions to Results API
-    coreStack.storageBucket.grantRead(this.resultsApi);
+    // Permissions are granted through the IAM role
 
     // CloudFormation Outputs
+    new cdk.CfnOutput(this, 'StorageBucketName', {
+      value: this.storageBucket.bucketName,
+      description: 'Name of the S3 bucket for video storage',
+      exportName: `${this.stackName}-StorageBucketName`,
+    });
+
+    new cdk.CfnOutput(this, 'LambdaExecutionRoleArn', {
+      value: this.lambdaExecutionRole.roleArn,
+      description: 'ARN of the Lambda execution role',
+      exportName: `${this.stackName}-LambdaExecutionRoleArn`,
+    });
+
     new cdk.CfnOutput(this, 'UploadHandlerFunctionName', {
       value: this.uploadHandler.functionName,
       description: 'Name of the Upload Handler Lambda function',
