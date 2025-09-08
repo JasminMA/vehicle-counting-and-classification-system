@@ -289,7 +289,7 @@ describe('ApiGatewayStack', () => {
     template.hasResourceProperties('AWS::ApiGateway::Stage', {
       AccessLogSetting: Match.objectLike({
         DestinationArn: Match.anyValue(),
-        Format: Match.stringLikeRegexp(/requestTime.*status.*httpMethod/),
+        Format: Match.stringLikeRegexp('requestTime.*status.*httpMethod'),
       }),
     });
   });
