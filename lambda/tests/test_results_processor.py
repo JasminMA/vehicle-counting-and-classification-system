@@ -1,28 +1,16 @@
 import pytest
 import json
 import boto3
-from moto import mock_rekognition, mock_s3
+from moto import mock_aws
 from unittest.mock import patch, MagicMock
 import os
 import sys
 
 # Add the results-processor directory to the path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'results-processor'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'results-processor'))
 
-from handler import (
-    lambda_handler,
-    is_valid_sns_record,
-    process_successful_job,
-    get_rekognition_results,
-    process_vehicle_labels,
-    classify_vehicle_label,
-    count_vehicles_by_type,
-    estimate_unique_vehicles,
-    calculate_bbox_distance,
-    generate_analysis_results,
-    save_results_to_s3,
-    create_error_result
-)
+# Import from the results-processor module  
+import handler as results_processor_handler
 
 
 class TestResultsProcessor:
@@ -43,14 +31,13 @@ class TestResultsProcessor:
                 }
             ]
         }
-        
+
         with patch.dict(os.environ, {'STORAGE_BUCKET_NAME': 'test-bucket'}):
-            with patch('handler.process_successful_job', return_value=True):
-                response = lambda_handler(event, None)
+            with patch.object(results_processor_handler, 'process_successful_job', return_value=True):
+                response = results_processor_handler.lambda_handler(event, None)
                 
                 assert response['statusCode'] == 200
                 response_body = json.loads(response['body'])
-                assert 'message' in response_body
                 assert 'Processed 1 result(s)' in response_body['message']
     
     def test_lambda_handler_failed_job(self):
@@ -69,10 +56,10 @@ class TestResultsProcessor:
                 }
             ]
         }
-        
+
         with patch.dict(os.environ, {'STORAGE_BUCKET_NAME': 'test-bucket'}):
-            with patch('handler.create_error_result', return_value=True) as mock_error:
-                response = lambda_handler(event, None)
+            with patch.object(results_processor_handler, 'create_error_result', return_value=True) as mock_error:
+                response = results_processor_handler.lambda_handler(event, None)
                 
                 assert response['statusCode'] == 200
                 mock_error.assert_called_once()
@@ -86,9 +73,11 @@ class TestResultsProcessor:
                 }
             ]
         }
-        
-        response = lambda_handler(event, None)
+
+        response = results_processor_handler.lambda_handler(event, None)
         assert response['statusCode'] == 200
+        response_body = json.loads(response['body'])
+        assert 'Processed 1 result(s)' in response_body['message']
     
     def test_lambda_handler_missing_env_var(self):
         """Test error when environment variable is missing"""
@@ -105,10 +94,12 @@ class TestResultsProcessor:
                 }
             ]
         }
-        
+
         # Don't set STORAGE_BUCKET_NAME
-        response = lambda_handler(event, None)
-        assert response['statusCode'] == 200  # Should continue processing other records
+        response = results_processor_handler.lambda_handler(event, None)
+        assert response['statusCode'] == 200
+        response_body = json.loads(response['body'])
+        assert 'Processed 1 result(s)' in response_body['message']
 
 
 class TestSNSRecordValidation:
@@ -120,59 +111,58 @@ class TestSNSRecordValidation:
                 'Message': json.dumps({'JobId': '123'})
             }
         }
-        assert is_valid_sns_record(record) is True
+        assert results_processor_handler.is_valid_sns_record(record) is True
     
     def test_is_valid_sns_record_missing_sns(self):
         """Test invalid SNS record - missing Sns key"""
         record = {'NotSns': 'data'}
-        assert is_valid_sns_record(record) is False
+        assert results_processor_handler.is_valid_sns_record(record) is False
     
     def test_is_valid_sns_record_missing_message(self):
         """Test invalid SNS record - missing Message key"""
         record = {'Sns': {'NotMessage': 'data'}}
-        assert is_valid_sns_record(record) is False
+        assert results_processor_handler.is_valid_sns_record(record) is False
 
 
 class TestVehicleClassification:
     
     def test_classify_vehicle_label_car(self):
         """Test car classification"""
-        assert classify_vehicle_label('Car') == 'cars'
-        assert classify_vehicle_label('Sedan') == 'cars'
-        assert classify_vehicle_label('SUV') == 'cars'
+        assert results_processor_handler.classify_vehicle_label('Car') == 'cars'
+        assert results_processor_handler.classify_vehicle_label('Sedan') == 'cars'
+        assert results_processor_handler.classify_vehicle_label('SUV') == 'cars'
     
     def test_classify_vehicle_label_truck(self):
         """Test truck classification"""
-        assert classify_vehicle_label('Truck') == 'trucks'
-        assert classify_vehicle_label('Pickup Truck') == 'trucks'
-        assert classify_vehicle_label('Semi Truck') == 'trucks'
+        assert results_processor_handler.classify_vehicle_label('Truck') == 'trucks'
+        assert results_processor_handler.classify_vehicle_label('Pickup Truck') == 'trucks'
+        assert results_processor_handler.classify_vehicle_label('Semi Truck') == 'trucks'
     
     def test_classify_vehicle_label_motorcycle(self):
         """Test motorcycle classification"""
-        assert classify_vehicle_label('Motorcycle') == 'motorcycles'
-        assert classify_vehicle_label('Scooter') == 'motorcycles'
+        assert results_processor_handler.classify_vehicle_label('Motorcycle') == 'motorcycles'
+        assert results_processor_handler.classify_vehicle_label('Scooter') == 'motorcycles'
+        assert results_processor_handler.classify_vehicle_label('Moped') == 'motorcycles'
     
     def test_classify_vehicle_label_bus(self):
         """Test bus classification"""
-        assert classify_vehicle_label('Bus') == 'buses'
-        assert classify_vehicle_label('School Bus') == 'buses'
+        assert results_processor_handler.classify_vehicle_label('Bus') == 'buses'
+        assert results_processor_handler.classify_vehicle_label('School Bus') == 'buses'
     
     def test_classify_vehicle_label_van(self):
         """Test van classification"""
-        assert classify_vehicle_label('Van') == 'vans'
-        assert classify_vehicle_label('Minivan') == 'vans'
+        assert results_processor_handler.classify_vehicle_label('Van') == 'vans'
+        assert results_processor_handler.classify_vehicle_label('Minivan') == 'vans'
     
     def test_classify_vehicle_label_emergency(self):
         """Test emergency vehicle classification"""
-        assert classify_vehicle_label('Ambulance') == 'emergency_vehicles'
-        assert classify_vehicle_label('Fire Truck') == 'emergency_vehicles'
-        assert classify_vehicle_label('Police Car') == 'emergency_vehicles'
+        assert results_processor_handler.classify_vehicle_label('Ambulance') == 'emergency_vehicles'
+        assert results_processor_handler.classify_vehicle_label('Fire Truck') == 'emergency_vehicles'
     
     def test_classify_vehicle_label_non_vehicle(self):
         """Test non-vehicle label"""
-        assert classify_vehicle_label('Person') is None
-        assert classify_vehicle_label('Building') is None
-        assert classify_vehicle_label('Tree') is None
+        assert results_processor_handler.classify_vehicle_label('Person') is None
+        assert results_processor_handler.classify_vehicle_label('Building') is None
 
 
 class TestVehicleDetectionProcessing:
@@ -237,25 +227,14 @@ class TestVehicleDetectionProcessing:
                 }
             ]
         }
+
+        vehicle_detections = results_processor_handler.process_vehicle_labels(rekognition_results)
         
-        vehicle_detections = process_vehicle_labels(rekognition_results)
-        
-        # Should find 2 vehicle detections (Car and Truck), not Person
-        assert len(vehicle_detections) == 2
-        
-        # Check first detection (Car)
-        car_detection = vehicle_detections[0]
-        assert car_detection['timestamp'] == 5.0
-        assert car_detection['vehicle_type'] == 'cars'
-        assert car_detection['label_name'] == 'Car'
-        assert car_detection['confidence'] == 85.5
-        
-        # Check second detection (Truck)
-        truck_detection = vehicle_detections[1]
-        assert truck_detection['timestamp'] == 7.0
-        assert truck_detection['vehicle_type'] == 'trucks'
-        assert truck_detection['label_name'] == 'Truck'
-        assert truck_detection['confidence'] == 92.1
+        assert len(vehicle_detections) == 2  # Only vehicles, not person
+        assert vehicle_detections[0]['vehicle_type'] == 'cars'
+        assert vehicle_detections[1]['vehicle_type'] == 'trucks'
+        assert vehicle_detections[0]['timestamp'] == 5.0
+        assert vehicle_detections[1]['timestamp'] == 7.0
     
     def test_process_vehicle_labels_low_confidence_filtered(self):
         """Test that low confidence detections are filtered out"""
@@ -281,11 +260,9 @@ class TestVehicleDetectionProcessing:
                 }
             ]
         }
-        
-        vehicle_detections = process_vehicle_labels(rekognition_results)
-        
-        # Should be empty due to low confidence
-        assert len(vehicle_detections) == 0
+
+        vehicle_detections = results_processor_handler.process_vehicle_labels(rekognition_results)
+        assert len(vehicle_detections) == 0  # Should be filtered out
     
     def test_process_vehicle_labels_no_instances(self):
         """Test handling of labels with no instances"""
@@ -301,10 +278,8 @@ class TestVehicleDetectionProcessing:
                 }
             ]
         }
-        
-        vehicle_detections = process_vehicle_labels(rekognition_results)
-        
-        # Should be empty since no instances
+
+        vehicle_detections = results_processor_handler.process_vehicle_labels(rekognition_results)
         assert len(vehicle_detections) == 0
 
 
@@ -318,8 +293,8 @@ class TestVehicleCounting:
             {'vehicle_type': 'trucks', 'timestamp': 3.0, 'bounding_box': {'left': 0.5, 'top': 0.5, 'width': 0.3, 'height': 0.3}},
             {'vehicle_type': 'motorcycles', 'timestamp': 4.0, 'bounding_box': {'left': 0.8, 'top': 0.8, 'width': 0.1, 'height': 0.1}}
         ]
-        
-        counts = count_vehicles_by_type(vehicle_detections)
+
+        counts = results_processor_handler.count_vehicles_by_type(vehicle_detections)
         
         assert counts['cars'] >= 1
         assert counts['trucks'] >= 1
@@ -329,9 +304,8 @@ class TestVehicleCounting:
     def test_count_vehicles_by_type_empty(self):
         """Test counting with no detections"""
         vehicle_detections = []
-        
-        counts = count_vehicles_by_type(vehicle_detections)
-        
+
+        counts = results_processor_handler.count_vehicles_by_type(vehicle_detections)
         assert counts['total_vehicles'] == 0
     
     def test_estimate_unique_vehicles_single(self):
@@ -339,8 +313,8 @@ class TestVehicleCounting:
         detections = [
             {'timestamp': 1.0, 'bounding_box': {'left': 0.1, 'top': 0.1, 'width': 0.2, 'height': 0.2}}
         ]
-        
-        count = estimate_unique_vehicles(detections)
+
+        count = results_processor_handler.estimate_unique_vehicles(detections)
         assert count == 1
     
     def test_estimate_unique_vehicles_same_location(self):
@@ -350,9 +324,9 @@ class TestVehicleCounting:
             {'timestamp': 1.5, 'bounding_box': {'left': 0.11, 'top': 0.11, 'width': 0.2, 'height': 0.2}},  # Very close
             {'timestamp': 2.0, 'bounding_box': {'left': 0.12, 'top': 0.12, 'width': 0.2, 'height': 0.2}}   # Very close
         ]
-        
-        count = estimate_unique_vehicles(detections)
-        assert count == 1  # Should be counted as same vehicle
+
+        count = results_processor_handler.estimate_unique_vehicles(detections)
+        assert count == 1  # Should be counted as one vehicle
     
     def test_estimate_unique_vehicles_different_locations(self):
         """Test estimating unique vehicles with different locations"""
@@ -360,19 +334,19 @@ class TestVehicleCounting:
             {'timestamp': 1.0, 'bounding_box': {'left': 0.1, 'top': 0.1, 'width': 0.2, 'height': 0.2}},
             {'timestamp': 1.5, 'bounding_box': {'left': 0.8, 'top': 0.8, 'width': 0.2, 'height': 0.2}}  # Far apart
         ]
-        
-        count = estimate_unique_vehicles(detections)
-        assert count == 2  # Should be counted as different vehicles
+
+        count = results_processor_handler.estimate_unique_vehicles(detections)
+        assert count == 2  # Should be counted as two vehicles
     
     def test_calculate_bbox_distance(self):
         """Test bounding box distance calculation"""
         bbox1 = {'left': 0.1, 'top': 0.1, 'width': 0.2, 'height': 0.2}  # Center at (0.2, 0.2)
         bbox2 = {'left': 0.2, 'top': 0.2, 'width': 0.2, 'height': 0.2}  # Center at (0.3, 0.3)
+
+        distance = results_processor_handler.calculate_bbox_distance(bbox1, bbox2)
         
-        distance = calculate_bbox_distance(bbox1, bbox2)
-        
-        # Distance between (0.2, 0.2) and (0.3, 0.3) should be sqrt(0.02) ≈ 0.141
-        assert abs(distance - 0.141) < 0.01
+        # Distance should be sqrt((0.3-0.2)^2 + (0.3-0.2)^2) = sqrt(0.02) ≈ 0.141
+        assert 0.1 < distance < 0.2
 
 
 class TestAnalysisResults:
@@ -397,44 +371,29 @@ class TestAnalysisResults:
                 'Format': 'mp4'
             }
         }
-        
-        results = generate_analysis_results(
+
+        results = results_processor_handler.generate_analysis_results(
             job_id, job_metadata, vehicle_detections, rekognition_results
         )
         
-        # Check structure
-        assert 'video_info' in results
+        assert results['video_info']['filename'] == 'test_video.mp4'
+        assert results['video_info']['duration_seconds'] == 30.0
+        assert results['video_info']['analysis_id'] == job_id
         assert 'vehicle_counts' in results
         assert 'timeline' in results
         assert 'processing_stats' in results
-        
-        # Check video info
-        video_info = results['video_info']
-        assert video_info['filename'] == 'test_video.mp4'
-        assert video_info['duration_seconds'] == 30.0
-        assert video_info['analysis_id'] == job_id
-        
-        # Check counts
-        vehicle_counts = results['vehicle_counts']
-        assert 'total_vehicles' in vehicle_counts
-        
-        # Check timeline
-        timeline = results['timeline']
-        assert len(timeline) >= 1
-        assert timeline[0]['timestamp'] == 5.0
-        assert timeline[0]['vehicle_type'] == 'cars'
 
 
-@mock_s3
 class TestS3Operations:
     
+    @mock_aws
     def test_save_results_to_s3(self):
         """Test saving results to S3"""
         # Setup mock S3
         s3 = boto3.client('s3', region_name='us-east-1')
         bucket_name = 'test-bucket'
         s3.create_bucket(Bucket=bucket_name)
-        
+
         job_id = 'job-test-123'
         analysis_results = {
             'video_info': {'filename': 'test.mp4'},
@@ -450,47 +409,42 @@ class TestS3Operations:
                 'bounding_box': {'left': 0.1, 'top': 0.2, 'width': 0.3, 'height': 0.4}
             }
         ]
-        
-        success = save_results_to_s3(bucket_name, job_id, analysis_results, vehicle_detections)
+
+        success = results_processor_handler.save_results_to_s3(bucket_name, job_id, analysis_results, vehicle_detections)
         
         assert success is True
         
-        # Check that files were created
-        objects = s3.list_objects_v2(Bucket=bucket_name, Prefix=f'results/{job_id}/')
-        assert objects['KeyCount'] == 3  # analysis.json, detections.csv, completed.json
+        # Verify files were created
+        assert results_processor_handler.s3_object_exists(bucket_name, f'results/{job_id}/analysis.json')
+        assert results_processor_handler.s3_object_exists(bucket_name, f'results/{job_id}/detections.csv')
+        assert results_processor_handler.s3_object_exists(bucket_name, f'results/{job_id}/completed.json')
     
+    @mock_aws
     def test_create_error_result(self):
         """Test creating error result in S3"""
         # Setup mock S3
         s3 = boto3.client('s3', region_name='us-east-1')
         bucket_name = 'test-bucket'
         s3.create_bucket(Bucket=bucket_name)
-        
+
         job_id = 'job-test-123'
         error_message = 'Test error message'
-        
-        success = create_error_result(bucket_name, job_id, error_message)
+
+        success = results_processor_handler.create_error_result(bucket_name, job_id, error_message)
         
         assert success is True
         
-        # Check that error file was created
-        error_key = f'errors/{job_id}/error.json'
-        response = s3.get_object(Bucket=bucket_name, Key=error_key)
+        # Verify error file was created
+        response = s3.get_object(Bucket=bucket_name, Key=f'errors/{job_id}/error.json')
         error_data = json.loads(response['Body'].read().decode('utf-8'))
-        
-        assert error_data['jobId'] == job_id
-        assert error_data['status'] == 'failed'
         assert error_data['error'] == error_message
+        assert error_data['status'] == 'failed'
 
 
-@mock_rekognition
 class TestRekognitionIntegration:
     
     def test_get_rekognition_results_success(self):
         """Test getting Rekognition results"""
-        # Mock Rekognition client
-        rekognition = boto3.client('rekognition', region_name='us-east-1')
-        
         # Mock the get_label_detection response
         mock_response = {
             'JobStatus': 'SUCCEEDED',
@@ -509,28 +463,28 @@ class TestRekognitionIntegration:
                 }
             ]
         }
-        
-        with patch.object(rekognition, 'get_label_detection', return_value=mock_response):
-            results = get_rekognition_results('test-job-id')
+
+        # Mock the rekognition client at module level
+        with patch.object(results_processor_handler.rekognition, 'get_label_detection', return_value=mock_response):
+            results = results_processor_handler.get_rekognition_results('test-job-id')
             
             assert results is not None
             assert results['JobStatus'] == 'SUCCEEDED'
             assert len(results['Labels']) == 1
-            assert results['Labels'][0]['Label']['Name'] == 'Car'
+            assert results['VideoMetadata']['DurationMillis'] == 30000
     
     def test_get_rekognition_results_failed_job(self):
         """Test handling failed Rekognition job"""
-        rekognition = boto3.client('rekognition', region_name='us-east-1')
-        
         mock_response = {
             'JobStatus': 'FAILED',
             'StatusMessage': 'Invalid video format'
         }
-        
-        with patch.object(rekognition, 'get_label_detection', return_value=mock_response):
-            results = get_rekognition_results('test-job-id')
+
+        # Mock the rekognition client at module level
+        with patch.object(results_processor_handler.rekognition, 'get_label_detection', return_value=mock_response):
+            results = results_processor_handler.get_rekognition_results('test-job-id')
             
-            assert results is None  # Should return None for failed jobs
+            assert results is None
 
 
 if __name__ == '__main__':

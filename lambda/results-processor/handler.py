@@ -659,3 +659,15 @@ def cleanup_processing_marker(bucket_name: str, job_id: str) -> bool:
     except Exception as e:
         logger.warning(f"Failed to cleanup processing marker: {str(e)}")
         return False
+
+
+def s3_object_exists(bucket_name: str, key: str) -> bool:
+    """Check if S3 object exists"""
+    try:
+        s3_client.head_object(Bucket=bucket_name, Key=key)
+        return True
+    except s3_client.exceptions.NoSuchKey:
+        return False
+    except Exception as e:
+        logger.warning(f"Error checking S3 object existence: {str(e)}")
+        return False

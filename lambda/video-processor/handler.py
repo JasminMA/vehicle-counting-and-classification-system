@@ -285,7 +285,7 @@ def start_rekognition_analysis(bucket_name: str, s3_key: str, job_id: str) -> st
                 }
             },
             NotificationChannel={
-                'TopicArn': sns_topic_arn,
+                'SNSTopicArn': sns_topic_arn,
                 'RoleArn': rekognition_role_arn
             },
             JobTag=job_id,  # Use job ID as tag for easy tracking

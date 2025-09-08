@@ -19,7 +19,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     
     REST API endpoint that returns job status and analysis results.
     Supports multiple endpoints:
-    - GET /results/{jobId} - Get analysis results for a specific job
+    - GET /results/{jobId} - Get analysis results for a specific job ID
     - GET /results/{jobId}/status - Get job status only
     - GET /results/{jobId}/download/{format} - Download results in specific format
     
@@ -108,9 +108,11 @@ def handle_results_request(bucket_name: str, job_id: str, include_details: bool 
                 
                 # Optionally include detailed timeline
                 if not include_details and 'timeline' in results:
+                    # Check if timeline will be truncated
+                    original_timeline_length = len(results['timeline'])
+                    results['timeline_truncated'] = original_timeline_length > 10
                     # Limit timeline to first 10 entries for summary
                     results['timeline'] = results['timeline'][:10]
-                    results['timeline_truncated'] = len(results.get('timeline', [])) > 10
                 
                 return create_success_response(response_data)
             else:

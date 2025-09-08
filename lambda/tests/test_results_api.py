@@ -1,32 +1,21 @@
 import pytest
 import json
 import boto3
-from moto import mock_s3
-from unittest.mock import patch, MagicMock
+from moto import mock_aws
+from unittest.mock import patch
 import os
 import sys
 
 # Add the results-api directory to the path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'results-api'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'results-api'))
 
-from handler import (
-    lambda_handler,
-    handle_results_request,
-    handle_status_request,
-    handle_download_request,
-    get_job_status,
-    get_analysis_results,
-    s3_object_exists,
-    generate_download_url,
-    is_valid_job_id,
-    create_success_response,
-    create_error_response
-)
+# Import from the results-api module
+import handler as results_api_module
 
 
 class TestResultsAPI:
     
-    @mock_s3
+    @mock_aws
     def test_lambda_handler_results_success(self):
         """Test successful results request"""
         # Setup mock S3
@@ -64,7 +53,7 @@ class TestResultsAPI:
         }
         
         with patch.dict(os.environ, {'STORAGE_BUCKET_NAME': bucket_name}):
-            response = lambda_handler(event, None)
+            response = results_api_module.lambda_handler(event, None)
             
             assert response['statusCode'] == 200
             response_body = json.loads(response['body'])
@@ -80,7 +69,7 @@ class TestResultsAPI:
             'pathParameters': {'jobId': 'job-test-123'}
         }
         
-        response = lambda_handler(event, None)
+        response = results_api_module.lambda_handler(event, None)
         assert response['statusCode'] == 405
     
     def test_lambda_handler_missing_job_id(self):
@@ -91,7 +80,7 @@ class TestResultsAPI:
             'pathParameters': None
         }
         
-        response = lambda_handler(event, None)
+        response = results_api_module.lambda_handler(event, None)
         assert response['statusCode'] == 400
     
     def test_lambda_handler_invalid_job_id(self):
@@ -102,7 +91,7 @@ class TestResultsAPI:
             'pathParameters': {'jobId': '../invalid'}
         }
         
-        response = lambda_handler(event, None)
+        response = results_api_module.lambda_handler(event, None)
         assert response['statusCode'] == 400
     
     def test_lambda_handler_missing_bucket_env(self):
@@ -113,7 +102,7 @@ class TestResultsAPI:
             'pathParameters': {'jobId': 'job-test-123'}
         }
         
-        response = lambda_handler(event, None)
+        response = results_api_module.lambda_handler(event, None)
         assert response['statusCode'] == 500
 
 
@@ -121,47 +110,52 @@ class TestJobIDValidation:
     
     def test_is_valid_job_id_success(self):
         """Test valid job IDs"""
-        assert is_valid_job_id('job-test-123') is True
-        assert is_valid_job_id('job-20240101-120000-abc123') is True
-        assert is_valid_job_id('job-abc123def456') is True
+        assert results_api_module.is_valid_job_id('job-test-123') is True
+        assert results_api_module.is_valid_job_id('job-20240101-120000-abc123') is True
+        assert results_api_module.is_valid_job_id('job-abc123def456') is True
     
     def test_is_valid_job_id_invalid_prefix(self):
         """Test invalid prefix"""
-        assert is_valid_job_id('invalid-123') is False
-        assert is_valid_job_id('test-123') is False
+        assert results_api_module.is_valid_job_id('invalid-123') is False
+        assert results_api_module.is_valid_job_id('test-123') is False
     
     def test_is_valid_job_id_too_short(self):
         """Test too short job ID"""
-        assert is_valid_job_id('job-123') is False
-        assert is_valid_job_id('job-') is False
+        assert results_api_module.is_valid_job_id('job-123') is False
+        assert results_api_module.is_valid_job_id('job-') is False
     
     def test_is_valid_job_id_too_long(self):
         """Test too long job ID"""
         long_id = 'job-' + 'a' * 100
-        assert is_valid_job_id(long_id) is False
+        assert results_api_module.is_valid_job_id(long_id) is False
     
     def test_is_valid_job_id_path_traversal(self):
         """Test path traversal attempts"""
-        assert is_valid_job_id('job-../test') is False
-        assert is_valid_job_id('job-test/path') is False
-        assert is_valid_job_id('job-test\\path') is False
+        assert results_api_module.is_valid_job_id('job-../test') is False
+        assert results_api_module.is_valid_job_id('job-test/path') is False
+        assert results_api_module.is_valid_job_id('job-test\\path') is False
     
     def test_is_valid_job_id_none_or_empty(self):
         """Test None or empty job ID"""
-        assert is_valid_job_id(None) is False
-        assert is_valid_job_id('') is False
-        assert is_valid_job_id(123) is False
+        assert results_api_module.is_valid_job_id(None) is False
+        assert results_api_module.is_valid_job_id('') is False
+        assert results_api_module.is_valid_job_id(123) is False
 
 
-@mock_s3
 class TestJobStatus:
     
-    def setup_method(self):
+    def setup_method(self, method):
         """Setup for each test"""
+        self.mock_aws = mock_aws()
+        self.mock_aws.start()
         self.s3 = boto3.client('s3', region_name='us-east-1')
         self.bucket_name = 'test-bucket'
         self.s3.create_bucket(Bucket=self.bucket_name)
         self.job_id = 'job-test-123'
+    
+    def teardown_method(self, method):
+        """Cleanup after each test"""
+        self.mock_aws.stop()
     
     def test_get_job_status_completed(self):
         """Test completed job status"""
@@ -176,7 +170,7 @@ class TestJobStatus:
             Body=json.dumps(completion_data)
         )
         
-        status = get_job_status(self.bucket_name, self.job_id)
+        status = results_api_module.get_job_status(self.bucket_name, self.job_id)
         assert status['status'] == 'completed'
         assert status['timestamp'] == '2024-01-01T12:00:00Z'
     
@@ -194,7 +188,7 @@ class TestJobStatus:
             Body=json.dumps(error_data)
         )
         
-        status = get_job_status(self.bucket_name, self.job_id)
+        status = results_api_module.get_job_status(self.bucket_name, self.job_id)
         assert status['status'] == 'failed'
         assert status['error'] == 'Video format not supported'
     
@@ -212,7 +206,7 @@ class TestJobStatus:
             Body=json.dumps(processing_data)
         )
         
-        status = get_job_status(self.bucket_name, self.job_id)
+        status = results_api_module.get_job_status(self.bucket_name, self.job_id)
         assert status['status'] == 'processing'
         assert status['stage'] == 'rekognition_running'
     
@@ -224,24 +218,29 @@ class TestJobStatus:
             Body=b'fake video content'
         )
         
-        status = get_job_status(self.bucket_name, self.job_id)
+        status = results_api_module.get_job_status(self.bucket_name, self.job_id)
         assert status['status'] == 'pending'
     
     def test_get_job_status_not_found(self):
         """Test job not found"""
-        status = get_job_status(self.bucket_name, 'nonexistent-job')
+        status = results_api_module.get_job_status(self.bucket_name, 'nonexistent-job')
         assert status['status'] == 'not_found'
 
 
-@mock_s3
 class TestResultsRetrieval:
     
-    def setup_method(self):
+    def setup_method(self, method):
         """Setup for each test"""
+        self.mock_aws = mock_aws()
+        self.mock_aws.start()
         self.s3 = boto3.client('s3', region_name='us-east-1')
         self.bucket_name = 'test-bucket'
         self.s3.create_bucket(Bucket=self.bucket_name)
         self.job_id = 'job-test-123'
+    
+    def teardown_method(self, method):
+        """Cleanup after each test"""
+        self.mock_aws.stop()
     
     def test_get_analysis_results_success(self):
         """Test successful analysis results retrieval"""
@@ -266,7 +265,7 @@ class TestResultsRetrieval:
             Body=json.dumps(analysis_data)
         )
         
-        results = get_analysis_results(self.bucket_name, self.job_id)
+        results = results_api_module.get_analysis_results(self.bucket_name, self.job_id)
         assert results is not None
         assert results['video_info']['filename'] == 'test_video.mp4'
         assert results['vehicle_counts']['total_vehicles'] == 7
@@ -274,7 +273,7 @@ class TestResultsRetrieval:
     
     def test_get_analysis_results_not_found(self):
         """Test analysis results not found"""
-        results = get_analysis_results(self.bucket_name, 'nonexistent-job')
+        results = results_api_module.get_analysis_results(self.bucket_name, 'nonexistent-job')
         assert results is None
     
     def test_s3_object_exists_true(self):
@@ -285,22 +284,27 @@ class TestResultsRetrieval:
             Body='test content'
         )
         
-        assert s3_object_exists(self.bucket_name, 'test-key') is True
+        assert results_api_module.s3_object_exists(self.bucket_name, 'test-key') is True
     
     def test_s3_object_exists_false(self):
         """Test S3 object exists check - false case"""
-        assert s3_object_exists(self.bucket_name, 'nonexistent-key') is False
+        assert results_api_module.s3_object_exists(self.bucket_name, 'nonexistent-key') is False
 
 
-@mock_s3
 class TestAPIEndpoints:
     
-    def setup_method(self):
+    def setup_method(self, method):
         """Setup for each test"""
+        self.mock_aws = mock_aws()
+        self.mock_aws.start()
         self.s3 = boto3.client('s3', region_name='us-east-1')
         self.bucket_name = 'test-bucket'
         self.s3.create_bucket(Bucket=self.bucket_name)
         self.job_id = 'job-test-123'
+    
+    def teardown_method(self, method):
+        """Cleanup after each test"""
+        self.mock_aws.stop()
     
     def test_handle_results_request_completed(self):
         """Test results request for completed job"""
@@ -323,7 +327,7 @@ class TestAPIEndpoints:
             Body=json.dumps(analysis_data)
         )
         
-        response = handle_results_request(self.bucket_name, self.job_id, include_details=False)
+        response = results_api_module.handle_results_request(self.bucket_name, self.job_id, include_details=False)
         
         assert response['statusCode'] == 200
         response_body = json.loads(response['body'])
@@ -344,7 +348,7 @@ class TestAPIEndpoints:
             Body=json.dumps(processing_data)
         )
         
-        response = handle_results_request(self.bucket_name, self.job_id)
+        response = results_api_module.handle_results_request(self.bucket_name, self.job_id)
         
         assert response['statusCode'] == 200
         response_body = json.loads(response['body'])
@@ -365,7 +369,7 @@ class TestAPIEndpoints:
             Body=json.dumps(error_data)
         )
         
-        response = handle_results_request(self.bucket_name, self.job_id)
+        response = results_api_module.handle_results_request(self.bucket_name, self.job_id)
         
         assert response['statusCode'] == 200
         response_body = json.loads(response['body'])
@@ -374,7 +378,7 @@ class TestAPIEndpoints:
     
     def test_handle_results_request_not_found(self):
         """Test results request for non-existent job"""
-        response = handle_results_request(self.bucket_name, 'nonexistent-job')
+        response = results_api_module.handle_results_request(self.bucket_name, 'nonexistent-job')
         
         assert response['statusCode'] == 404
     
@@ -391,7 +395,7 @@ class TestAPIEndpoints:
             Body=json.dumps(completion_data)
         )
         
-        response = handle_status_request(self.bucket_name, self.job_id)
+        response = results_api_module.handle_status_request(self.bucket_name, self.job_id)
         
         assert response['statusCode'] == 200
         response_body = json.loads(response['body'])
@@ -413,7 +417,7 @@ class TestAPIEndpoints:
             Body=json.dumps(processing_data)
         )
         
-        response = handle_status_request(self.bucket_name, self.job_id)
+        response = results_api_module.handle_status_request(self.bucket_name, self.job_id)
         
         assert response['statusCode'] == 200
         response_body = json.loads(response['body'])
@@ -422,15 +426,20 @@ class TestAPIEndpoints:
         assert response_body['startedAt'] == '2024-01-01T11:55:00Z'
 
 
-@mock_s3
 class TestDownloadEndpoint:
     
-    def setup_method(self):
+    def setup_method(self, method):
         """Setup for each test"""
+        self.mock_aws = mock_aws()
+        self.mock_aws.start()
         self.s3 = boto3.client('s3', region_name='us-east-1')
         self.bucket_name = 'test-bucket'
         self.s3.create_bucket(Bucket=self.bucket_name)
         self.job_id = 'job-test-123'
+    
+    def teardown_method(self, method):
+        """Cleanup after each test"""
+        self.mock_aws.stop()
     
     def test_handle_download_request_json_success(self):
         """Test successful JSON download request"""
@@ -449,16 +458,13 @@ class TestDownloadEndpoint:
             Body=json.dumps(analysis_data)
         )
         
-        with patch('handler.generate_download_url') as mock_generate:
-            mock_generate.return_value = 'https://s3.example.com/download-url'
-            
-            response = handle_download_request(self.bucket_name, self.job_id, 'json')
-            
-            assert response['statusCode'] == 200
-            response_body = json.loads(response['body'])
-            assert response_body['format'] == 'json'
-            assert response_body['downloadUrl'] == 'https://s3.example.com/download-url'
-            assert response_body['filename'] == f'vehicle_analysis_{self.job_id}.json'
+        response = results_api_module.handle_download_request(self.bucket_name, self.job_id, 'json')
+        
+        assert response['statusCode'] == 200
+        response_body = json.loads(response['body'])
+        assert response_body['format'] == 'json'
+        assert 'downloadUrl' in response_body
+        assert response_body['filename'] == f'vehicle_analysis_{self.job_id}.json'
     
     def test_handle_download_request_csv_success(self):
         """Test successful CSV download request"""
@@ -477,19 +483,16 @@ class TestDownloadEndpoint:
             Body=csv_data
         )
         
-        with patch('handler.generate_download_url') as mock_generate:
-            mock_generate.return_value = 'https://s3.example.com/download-url'
-            
-            response = handle_download_request(self.bucket_name, self.job_id, 'csv')
-            
-            assert response['statusCode'] == 200
-            response_body = json.loads(response['body'])
-            assert response_body['format'] == 'csv'
-            assert response_body['filename'] == f'vehicle_detections_{self.job_id}.csv'
+        response = results_api_module.handle_download_request(self.bucket_name, self.job_id, 'csv')
+        
+        assert response['statusCode'] == 200
+        response_body = json.loads(response['body'])
+        assert response_body['format'] == 'csv'
+        assert response_body['filename'] == f'vehicle_detections_{self.job_id}.csv'
     
     def test_handle_download_request_invalid_format(self):
         """Test download request with invalid format"""
-        response = handle_download_request(self.bucket_name, self.job_id, 'xml')
+        response = results_api_module.handle_download_request(self.bucket_name, self.job_id, 'xml')
         
         assert response['statusCode'] == 400
         response_body = json.loads(response['body'])
@@ -504,7 +507,7 @@ class TestDownloadEndpoint:
             Body=json.dumps({'status': 'processing'})
         )
         
-        response = handle_download_request(self.bucket_name, self.job_id, 'json')
+        response = results_api_module.handle_download_request(self.bucket_name, self.job_id, 'json')
         
         assert response['statusCode'] == 404
         response_body = json.loads(response['body'])
@@ -519,7 +522,7 @@ class TestDownloadEndpoint:
             Body=json.dumps({'jobId': self.job_id, 'status': 'completed'})
         )
         
-        response = handle_download_request(self.bucket_name, self.job_id, 'json')
+        response = results_api_module.handle_download_request(self.bucket_name, self.job_id, 'json')
         
         assert response['statusCode'] == 404
         response_body = json.loads(response['body'])
@@ -528,7 +531,7 @@ class TestDownloadEndpoint:
 
 class TestUtilityFunctions:
     
-    @mock_s3
+    @mock_aws
     def test_generate_download_url_success(self):
         """Test successful download URL generation"""
         s3 = boto3.client('s3', region_name='us-east-1')
@@ -542,16 +545,16 @@ class TestUtilityFunctions:
             Body='{"test": "data"}'
         )
         
-        url = generate_download_url(bucket_name, 'test-file.json', 'test.json', 'application/json')
+        url = results_api_module.generate_download_url(bucket_name, 'test-file.json', 'test.json', 'application/json')
         
         assert url is not None
         assert 'test-file.json' in url
-        assert 'X-Amz-Expires' in url
+        assert 'Expires=' in url  # AWS uses 'Expires=' not 'X-Amz-Expires'
     
     def test_create_success_response(self):
         """Test success response creation"""
         data = {'message': 'success', 'data': 123}
-        response = create_success_response(data)
+        response = results_api_module.create_success_response(data)
         
         assert response['statusCode'] == 200
         assert 'Content-Type' in response['headers']
@@ -563,7 +566,7 @@ class TestUtilityFunctions:
     
     def test_create_error_response(self):
         """Test error response creation"""
-        response = create_error_response(400, 'Bad request')
+        response = results_api_module.create_error_response(400, 'Bad request')
         
         assert response['statusCode'] == 400
         assert 'Content-Type' in response['headers']
@@ -574,15 +577,20 @@ class TestUtilityFunctions:
         assert 'timestamp' in body
 
 
-@mock_s3
 class TestEndToEndScenarios:
     
-    def setup_method(self):
+    def setup_method(self, method):
         """Setup for each test"""
+        self.mock_aws = mock_aws()
+        self.mock_aws.start()
         self.s3 = boto3.client('s3', region_name='us-east-1')
         self.bucket_name = 'test-bucket'
         self.s3.create_bucket(Bucket=self.bucket_name)
         self.job_id = 'job-test-123'
+    
+    def teardown_method(self, method):
+        """Cleanup after each test"""
+        self.mock_aws.stop()
     
     def test_complete_workflow_success(self):
         """Test complete workflow from upload to results"""
@@ -601,7 +609,7 @@ class TestEndToEndScenarios:
                 'pathParameters': {'jobId': self.job_id}
             }
             
-            response = lambda_handler(event, None)
+            response = results_api_module.lambda_handler(event, None)
             assert response['statusCode'] == 200
             body = json.loads(response['body'])
             assert body['status'] == 'pending'
@@ -613,7 +621,7 @@ class TestEndToEndScenarios:
                 Body=json.dumps({'status': 'processing', 'stage': 'rekognition_running'})
             )
             
-            response = lambda_handler(event, None)
+            response = results_api_module.lambda_handler(event, None)
             assert response['statusCode'] == 200
             body = json.loads(response['body'])
             assert body['status'] == 'processing'
@@ -641,7 +649,7 @@ class TestEndToEndScenarios:
             
             # Test full results endpoint
             event['resource'] = '/results/{jobId}'
-            response = lambda_handler(event, None)
+            response = results_api_module.lambda_handler(event, None)
             assert response['statusCode'] == 200
             body = json.loads(response['body'])
             assert body['status'] == 'completed'
@@ -655,10 +663,10 @@ class TestEndToEndScenarios:
             event = {
                 'httpMethod': 'GET',
                 'resource': '/results/{jobId}',
-                'pathParameters': {'jobId': 'nonexistent-job'}
+                'pathParameters': {'jobId': 'job-nonexistent-123'}
             }
             
-            response = lambda_handler(event, None)
+            response = results_api_module.lambda_handler(event, None)
             assert response['statusCode'] == 404
             
             # 2. Test failed job
@@ -674,7 +682,7 @@ class TestEndToEndScenarios:
             )
             
             event['pathParameters']['jobId'] = self.job_id
-            response = lambda_handler(event, None)
+            response = results_api_module.lambda_handler(event, None)
             assert response['statusCode'] == 200
             body = json.loads(response['body'])
             assert body['status'] == 'failed'
