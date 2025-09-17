@@ -13,25 +13,9 @@ import io
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# Lazy initialization of AWS clients
-_rekognition = None
-_s3_client = None
-
-def get_rekognition_client():
-    global _rekognition
-    if _rekognition is None:
-        _rekognition = boto3.client('rekognition')
-    return _rekognition
-
-def get_s3_client():
-    global _s3_client
-    if _s3_client is None:
-        _s3_client = boto3.client('s3')
-    return _s3_client
-
-# For backward compatibility in tests
-rekognition = property(get_rekognition_client)
-s3_client = property(get_s3_client)
+# Initialize AWS clients
+rekognition = boto3.client('rekognition')
+s3_client = boto3.client('s3')
 
 # Vehicle classification mapping
 VEHICLE_LABELS = {
@@ -209,7 +193,6 @@ def get_rekognition_results(job_id: str) -> Dict[str, Any]:
         Complete results dictionary or None if error
     """
     try:
-        rekognition = get_rekognition_client()
         all_labels = []
         next_token = None
         
@@ -253,7 +236,6 @@ def get_rekognition_results(job_id: str) -> Dict[str, Any]:
 def get_job_metadata(bucket_name: str, job_id: str) -> Dict[str, Any]:
     """Get job metadata from S3"""
     try:
-        s3_client = get_s3_client()
         metadata_key = f"jobs/{job_id}/metadata.json"
         response = s3_client.get_object(Bucket=bucket_name, Key=metadata_key)
         return json.loads(response['Body'].read().decode('utf-8'))
@@ -560,7 +542,6 @@ def save_results_to_s3(
         True if successful, False otherwise
     """
     try:
-        s3_client = get_s3_client()
         results_prefix = f"results/{job_id}"
         
         # Save JSON summary
@@ -645,7 +626,6 @@ def generate_csv_report(vehicle_detections: List[Dict[str, Any]]) -> str:
 def create_error_result(bucket_name: str, job_id: str, error_message: str) -> bool:
     """Create error result file in S3"""
     try:
-        s3_client = get_s3_client()
         error_key = f"errors/{job_id}/error.json"
         error_data = {
             'jobId': job_id,
@@ -672,7 +652,6 @@ def create_error_result(bucket_name: str, job_id: str, error_message: str) -> bo
 def cleanup_processing_marker(bucket_name: str, job_id: str) -> bool:
     """Remove processing marker file"""
     try:
-        s3_client = get_s3_client()
         marker_key = f"processing/{job_id}.processing"
         s3_client.delete_object(Bucket=bucket_name, Key=marker_key)
         logger.info(f"Cleaned up processing marker for job {job_id}")
@@ -685,7 +664,6 @@ def cleanup_processing_marker(bucket_name: str, job_id: str) -> bool:
 def s3_object_exists(bucket_name: str, key: str) -> bool:
     """Check if S3 object exists"""
     try:
-        s3_client = get_s3_client()
         s3_client.head_object(Bucket=bucket_name, Key=key)
         return True
     except s3_client.exceptions.NoSuchKey:

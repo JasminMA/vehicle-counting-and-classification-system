@@ -7,28 +7,12 @@ import os
 import sys
 import importlib.util
 
-# Mock AWS environment for testing
-@pytest.fixture(autouse=True)
-def aws_credentials():
-    """Mock AWS credentials for testing"""
-    with patch.dict(os.environ, {
-        'AWS_ACCESS_KEY_ID': 'testing',
-        'AWS_SECRET_ACCESS_KEY': 'testing',
-        'AWS_SECURITY_TOKEN': 'testing',
-        'AWS_SESSION_TOKEN': 'testing',
-        'AWS_DEFAULT_REGION': 'us-east-1'
-    }):
-        yield
-
 # Load results processor module directly to avoid path conflicts
 def load_results_processor():
     handler_path = os.path.join(os.path.dirname(__file__), '..', 'results-processor', 'handler.py')
     spec = importlib.util.spec_from_file_location("results_processor", handler_path)
     results_processor = importlib.util.module_from_spec(spec)
-    
-    # Mock AWS clients before loading
-    with mock_aws():
-        spec.loader.exec_module(results_processor)
+    spec.loader.exec_module(results_processor)
     return results_processor
 
 results_processor = load_results_processor()
