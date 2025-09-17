@@ -323,13 +323,11 @@ class JobsUI {
                 actions.push(`<button class="btn btn-primary" data-action="view-results">View Results</button>`);
                 actions.push(`<button class="btn btn-outline" data-action="download-json">Download JSON</button>`);
                 actions.push(`<button class="btn btn-outline" data-action="download-csv">Download CSV</button>`);
-                actions.push(`<button class="btn btn-outline" data-action="remove">Remove</button>`);
                 break;
                 
             case 'failed':
             case 'cancelled':
                 actions.push(`<button class="btn btn-outline" data-action="retry">Retry</button>`);
-                actions.push(`<button class="btn btn-outline" data-action="remove">Remove</button>`);
                 break;
                 
             case 'uploading':
@@ -339,12 +337,10 @@ class JobsUI {
             case 'processing':
             case 'pending':
                 actions.push(`<button class="btn btn-outline" data-action="refresh">Refresh Status</button>`);
-                actions.push(`<button class="btn btn-outline danger" data-action="remove">Remove</button>`);
                 break;
                 
             default:
                 actions.push(`<button class="btn btn-outline" data-action="refresh">Refresh</button>`);
-                actions.push(`<button class="btn btn-outline" data-action="remove">Remove</button>`);
         }
 
         return actions.join('');

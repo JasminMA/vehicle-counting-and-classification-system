@@ -245,9 +245,6 @@ class ResultsUI {
         if (timeline.length === 0) {
             return `
                 <div class="timeline-section">
-                    <div class="timeline-header">
-                        <h3>Detection Timeline</h3>
-                    </div>
                     <div class="empty-timeline">
                         <p>No vehicle detections found in timeline</p>
                     </div>
@@ -268,19 +265,6 @@ class ResultsUI {
         ` : '';
         
         return `
-            <div class="timeline-section">
-                <div class="timeline-header">
-                    <h3>Detection Timeline</h3>
-                    <div class="timeline-controls">
-                        <button class="btn btn-outline" id="filterTimeline">Filter</button>
-                        <button class="btn btn-outline" id="exportTimeline">Export</button>
-                    </div>
-                </div>
-                <div class="timeline-container">
-                    ${timelineItems}
-                    ${moreMessage}
-                </div>
-            </div>
         `;
     }
 

@@ -70,16 +70,7 @@ npm run test:cdk
 npm run synth:dev
 ```
 
-**Option 2: Use test script**
-```bash
-# Linux/Mac
-./scripts/test-core-infrastructure.sh
-
-# Windows PowerShell
-.\scripts\test-core-infrastructure.ps1
-```
-
-**Option 3: Manual testing**
+**Option 2: Manual testing**
 ```bash
 cd infrastructure
 npm run build
