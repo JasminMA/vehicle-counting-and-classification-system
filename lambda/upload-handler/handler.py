@@ -10,17 +10,8 @@ import logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# Lazy initialization of AWS clients
-_s3_client = None
-
-def get_s3_client():
-    global _s3_client
-    if _s3_client is None:
-        _s3_client = boto3.client('s3')
-    return _s3_client
-
-# For backward compatibility in tests
-s3_client = property(get_s3_client)
+# Initialize AWS clients
+s3_client = boto3.client('s3')
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
@@ -103,7 +94,6 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Store job metadata in S3 for tracking
         metadata_key = f"jobs/{job_id}/metadata.json"
         try:
-            s3_client = get_s3_client()
             s3_client.put_object(
                 Bucket=bucket_name,
                 Key=metadata_key,
@@ -210,7 +200,6 @@ def generate_presigned_upload_url(bucket_name: str, s3_key: str, expiration: int
         Pre-signed URL string or None if generation fails
     """
     try:
-        s3_client = get_s3_client()
         response = s3_client.generate_presigned_url(
             'put_object',
             Params={

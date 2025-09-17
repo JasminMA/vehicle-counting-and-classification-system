@@ -10,17 +10,8 @@ from datetime import datetime
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# Lazy initialization of AWS clients
-_s3_client = None
-
-def get_s3_client():
-    global _s3_client
-    if _s3_client is None:
-        _s3_client = boto3.client('s3')
-    return _s3_client
-
-# For backward compatibility in tests
-s3_client = property(get_s3_client)
+# Initialize AWS clients
+s3_client = boto3.client('s3')
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
@@ -264,7 +255,6 @@ def get_job_status(bucket_name: str, job_id: str) -> Dict[str, Any]:
         if s3_object_exists(bucket_name, completed_key):
             # Get completion details
             try:
-                s3_client = get_s3_client()
                 response = s3_client.get_object(Bucket=bucket_name, Key=completed_key)
                 completion_data = json.loads(response['Body'].read().decode('utf-8'))
                 return {
@@ -280,7 +270,6 @@ def get_job_status(bucket_name: str, job_id: str) -> Dict[str, Any]:
         if s3_object_exists(bucket_name, error_key):
             # Get error details
             try:
-                s3_client = get_s3_client()
                 response = s3_client.get_object(Bucket=bucket_name, Key=error_key)
                 error_data = json.loads(response['Body'].read().decode('utf-8'))
                 return {
@@ -297,7 +286,6 @@ def get_job_status(bucket_name: str, job_id: str) -> Dict[str, Any]:
         if s3_object_exists(bucket_name, processing_key):
             # Get processing details
             try:
-                s3_client = get_s3_client()
                 response = s3_client.get_object(Bucket=bucket_name, Key=processing_key)
                 processing_data = json.loads(response['Body'].read().decode('utf-8'))
                 return {
@@ -311,7 +299,6 @@ def get_job_status(bucket_name: str, job_id: str) -> Dict[str, Any]:
         # Check if upload exists (job created but not started)
         upload_prefix = f"uploads/{job_id}/"
         try:
-            s3_client = get_s3_client()
             response = s3_client.list_objects_v2(
                 Bucket=bucket_name,
                 Prefix=upload_prefix,
@@ -342,7 +329,6 @@ def get_analysis_results(bucket_name: str, job_id: str) -> Optional[Dict[str, An
         Analysis results dictionary or None if not found
     """
     try:
-        s3_client = get_s3_client()
         results_key = f"results/{job_id}/analysis.json"
         response = s3_client.get_object(Bucket=bucket_name, Key=results_key)
         results = json.loads(response['Body'].read().decode('utf-8'))
@@ -361,7 +347,6 @@ def get_analysis_results(bucket_name: str, job_id: str) -> Optional[Dict[str, An
 def s3_object_exists(bucket_name: str, key: str) -> bool:
     """Check if S3 object exists"""
     try:
-        s3_client = get_s3_client()
         s3_client.head_object(Bucket=bucket_name, Key=key)
         return True
     except s3_client.exceptions.NoSuchKey:
@@ -385,7 +370,6 @@ def generate_download_url(bucket_name: str, s3_key: str, filename: str, content_
         Pre-signed URL string or None if generation fails
     """
     try:
-        s3_client = get_s3_client()
         response = s3_client.generate_presigned_url(
             'get_object',
             Params={
