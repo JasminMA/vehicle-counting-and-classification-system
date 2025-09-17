@@ -10,10 +10,33 @@ from datetime import datetime
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# Initialize AWS clients
-rekognition = boto3.client('rekognition')
-s3_client = boto3.client('s3')
-sns_client = boto3.client('sns')
+# Lazy initialization of AWS clients
+_rekognition = None
+_s3_client = None
+_sns_client = None
+
+def get_rekognition_client():
+    global _rekognition
+    if _rekognition is None:
+        _rekognition = boto3.client('rekognition')
+    return _rekognition
+
+def get_s3_client():
+    global _s3_client
+    if _s3_client is None:
+        _s3_client = boto3.client('s3')
+    return _s3_client
+
+def get_sns_client():
+    global _sns_client
+    if _sns_client is None:
+        _sns_client = boto3.client('sns')
+    return _sns_client
+
+# For backward compatibility in tests
+rekognition = property(get_rekognition_client)
+s3_client = property(get_s3_client)
+sns_client = property(get_sns_client)
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
@@ -152,6 +175,7 @@ def get_video_metadata(bucket_name: str, s3_key: str) -> Dict[str, Any]:
         Dictionary with video metadata or None if error
     """
     try:
+        s3_client = get_s3_client()
         response = s3_client.head_object(Bucket=bucket_name, Key=s3_key)
         return {
             'size': response.get('ContentLength', 0),
@@ -177,6 +201,7 @@ def create_processing_marker(bucket_name: str, job_id: str, video_metadata: Dict
         True if successful, False otherwise
     """
     try:
+        s3_client = get_s3_client()
         marker_key = f"processing/{job_id}.processing"
         marker_data = {
             'jobId': job_id,
@@ -203,6 +228,7 @@ def create_processing_marker(bucket_name: str, job_id: str, video_metadata: Dict
 def update_processing_marker(bucket_name: str, job_id: str, rekognition_job_id: str) -> bool:
     """Update processing marker with Rekognition job ID"""
     try:
+        s3_client = get_s3_client()
         marker_key = f"processing/{job_id}.processing"
         
         # Get existing marker
@@ -232,6 +258,7 @@ def update_processing_marker(bucket_name: str, job_id: str, rekognition_job_id: 
 def create_error_marker(bucket_name: str, job_id: str, error_message: str) -> bool:
     """Create an error marker file in S3"""
     try:
+        s3_client = get_s3_client()
         error_key = f"errors/{job_id}/error.json"
         error_data = {
             'jobId': job_id,
@@ -268,6 +295,8 @@ def start_rekognition_analysis(bucket_name: str, s3_key: str, job_id: str) -> st
         Rekognition job ID if successful, None otherwise
     """
     try:
+        rekognition = get_rekognition_client()
+        
         # Get SNS topic ARN and service role ARN from environment
         sns_topic_arn = os.environ.get('SNS_TOPIC_ARN')
         rekognition_role_arn = os.environ.get('REKOGNITION_ROLE_ARN')
